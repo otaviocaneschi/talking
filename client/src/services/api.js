@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:3001/api';
+// Em dev usa localhost:3001, em produção (ngrok) usa a mesma origem
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * Wrapper para chamadas HTTP à API.

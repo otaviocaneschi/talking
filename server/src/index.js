@@ -7,6 +7,7 @@ const cors = require('cors');
 const { initDatabase } = require('./database/init');
 const { socketAuthMiddleware } = require('./middleware/auth');
 const { registerChatHandlers } = require('./socket/chat');
+const { registerSignalingHandlers } = require('./socket/signaling');
 
 // ─── Rotas ──────────────────────────────────────────────
 const authRoutes = require('./routes/auth');
@@ -55,12 +56,28 @@ app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/users', userRoutes);
 
+// ─── Servir o frontend (produção / ngrok) ───────────────
+const clientDistPath = require('path').join(__dirname, '..', '..', 'client', 'dist');
+if (require('fs').existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+    // Para SPA: qualquer rota não-API retorna o index.html
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            res.sendFile(require('path').join(clientDistPath, 'index.html'));
+        }
+    });
+    console.log('📦 Servindo frontend de:', clientDistPath);
+}
+
 // ─── Socket.io ──────────────────────────────────────────
 // Middleware de autenticação JWT para o Socket.io
 io.use(socketAuthMiddleware);
 
 // Registra os handlers de chat
 registerChatHandlers(io);
+
+// Registra os handlers de sinalização WebRTC (voz)
+registerSignalingHandlers(io);
 
 // ─── Inicia o servidor ──────────────────────────────────
 httpServer.listen(PORT, () => {

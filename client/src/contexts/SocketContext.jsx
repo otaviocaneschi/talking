@@ -2,7 +2,12 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
-const SOCKET_URL = 'http://localhost:3001';
+// Em dev usa localhost:3001, em produção (ngrok) detecta automaticamente
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (
+    typeof window !== 'undefined' && window.location.origin !== 'http://localhost:5173'
+        ? window.location.origin
+        : 'http://localhost:3001'
+);
 
 const SocketContext = createContext(null);
 
@@ -11,6 +16,7 @@ export function SocketProvider({ children }) {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState([]);
+    const [voiceUsers, setVoiceUsers] = useState({}); // { channelId: [users] }
     const socketRef = useRef(null);
 
     // Conecta ao servidor quando tem token
@@ -49,6 +55,14 @@ export function SocketProvider({ children }) {
         // Usuários online
         newSocket.on('user:online', (users) => {
             setOnlineUsers(users);
+        });
+
+        // Usuários em canais de voz
+        newSocket.on('voice:users', ({ channelId, users }) => {
+            setVoiceUsers((prev) => ({
+                ...prev,
+                [channelId]: users,
+            }));
         });
 
         socketRef.current = newSocket;
@@ -91,6 +105,7 @@ export function SocketProvider({ children }) {
             socket,
             connected,
             onlineUsers,
+            voiceUsers,
             joinChannel,
             sendMessage,
             sendTyping,

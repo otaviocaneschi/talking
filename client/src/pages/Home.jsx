@@ -1,20 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Hash } from 'lucide-react';
 import { useSocket } from '../contexts/SocketContext';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import MessageInput from '../components/MessageInput';
 import UserList from '../components/UserList';
+import VoiceChannel from '../components/VoiceChannel';
 
 export default function Home() {
-    const { socket, onlineUsers, joinChannel, sendMessage, sendTyping, sendStopTyping } = useSocket();
+    const { socket, onlineUsers, voiceUsers: socketVoiceUsers, joinChannel, sendMessage, sendTyping, sendStopTyping } = useSocket();
+    const { user } = useAuth();
+    const {
+        voiceChannelId,
+        isMuted,
+        isDeafened,
+        voiceUsers: webrtcVoiceUsers,
+        speakingUsers,
+        joinVoice,
+        leaveVoice,
+        toggleMute,
+        toggleDeafen,
+    } = useWebRTC(socket);
 
     const [channels, setChannels] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [activeChannel, setActiveChannel] = useState(null);
     const [messages, setMessages] = useState([]);
     const [typingUsers, setTypingUsers] = useState([]);
+
+    // Merge voice users from socket context and webrtc hook
+    const voiceUsers = { ...socketVoiceUsers, ...webrtcVoiceUsers };
 
     // Carrega canais e usuários na montagem
     useEffect(() => {
@@ -80,17 +97,28 @@ export default function Home() {
     }, [typingUsers]);
 
     const handleSelectChannel = useCallback((channel) => {
+        setActiveChannel(channel);
+
         if (channel.type === 'voice') {
-            // Voice channels serão implementados na Fase 4
-            setActiveChannel(channel);
+            // Não faz join automaticamente — o usuário decide via botão
             return;
         }
 
-        setActiveChannel(channel);
         setMessages([]);
         setTypingUsers([]);
         joinChannel(channel.id);
     }, [joinChannel]);
+
+    const handleJoinVoice = useCallback(async (channelId) => {
+        try {
+            await joinVoice(channelId);
+        } catch (err) {
+            console.error('Erro ao entrar no canal de voz:', err);
+        }
+    }, [joinVoice]);
+
+    // Encontra o nome do canal de voz conectado
+    const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
 
     return (
         <div className="app-layout">
@@ -98,6 +126,14 @@ export default function Home() {
                 channels={channels}
                 activeChannel={activeChannel}
                 onSelectChannel={handleSelectChannel}
+                voiceUsers={voiceUsers}
+                voiceChannelId={voiceChannelId}
+                isMuted={isMuted}
+                isDeafened={isDeafened}
+                connectedVoiceChannelName={connectedVoiceChannel?.name}
+                onToggleMute={toggleMute}
+                onToggleDeafen={toggleDeafen}
+                onDisconnectVoice={leaveVoice}
             />
 
             <div className="main-content">
@@ -112,7 +148,7 @@ export default function Home() {
                             <div className="chat-header-divider" />
                             <span className="channel-description">
                                 {activeChannel.type === 'voice'
-                                    ? 'Canal de voz — em breve!'
+                                    ? `Canal de voz${voiceChannelId === activeChannel.id ? ' — conectado' : ''}`
                                     : `Conversando em #${activeChannel.name}`
                                 }
                             </span>
@@ -120,27 +156,40 @@ export default function Home() {
                     )}
                 </div>
 
-                {/* Chat + Users */}
+                {/* Chat + Users / Voice Channel */}
                 <div className="chat-container">
-                    <div className="chat-area">
-                        <ChatArea
-                            messages={messages}
+                    {activeChannel?.type === 'voice' ? (
+                        <VoiceChannel
                             channel={activeChannel}
-                            typingUsers={typingUsers}
+                            voiceUsers={voiceUsers}
+                            speakingUsers={speakingUsers}
+                            voiceChannelId={voiceChannelId}
+                            onJoin={handleJoinVoice}
+                            currentUser={user}
                         />
-                        {activeChannel?.type === 'text' && (
-                            <MessageInput
-                                channelId={activeChannel?.id}
-                                onSend={sendMessage}
-                                onTyping={sendTyping}
-                                onStopTyping={sendStopTyping}
+                    ) : (
+                        <>
+                            <div className="chat-area">
+                                <ChatArea
+                                    messages={messages}
+                                    channel={activeChannel}
+                                    typingUsers={typingUsers}
+                                />
+                                {activeChannel?.type === 'text' && (
+                                    <MessageInput
+                                        channelId={activeChannel?.id}
+                                        onSend={sendMessage}
+                                        onTyping={sendTyping}
+                                        onStopTyping={sendStopTyping}
+                                    />
+                                )}
+                            </div>
+                            <UserList
+                                onlineUsers={onlineUsers}
+                                allUsers={allUsers}
                             />
-                        )}
-                    </div>
-                    <UserList
-                        onlineUsers={onlineUsers}
-                        allUsers={allUsers}
-                    />
+                        </>
+                    )}
                 </div>
             </div>
         </div>

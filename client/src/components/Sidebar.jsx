@@ -1,11 +1,24 @@
-import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import VoiceControls from './VoiceControls';
 
-export default function Sidebar({ channels, activeChannel, onSelectChannel }) {
+export default function Sidebar({
+    channels,
+    activeChannel,
+    onSelectChannel,
+    voiceUsers = {},
+    voiceChannelId,
+    isMuted,
+    isDeafened,
+    connectedVoiceChannelName,
+    onToggleMute,
+    onToggleDeafen,
+    onDisconnectVoice,
+}) {
     const { user, logout } = useAuth();
 
     const textChannels = channels.filter((c) => c.type === 'text');
-    const voiceChannels = channels.filter((c) => c.type === 'voice');
+    const voiceChannelsList = channels.filter((c) => c.type === 'voice');
 
     return (
         <div className="sidebar">
@@ -40,18 +53,57 @@ export default function Sidebar({ channels, activeChannel, onSelectChannel }) {
                     <ChevronDown size={10} />
                     Canais de Voz
                 </div>
-                {voiceChannels.map((channel) => (
-                    <div
-                        key={channel.id}
-                        id={`voice-channel-${channel.id}`}
-                        className={`channel-item ${activeChannel?.id === channel.id ? 'active' : ''}`}
-                        onClick={() => onSelectChannel(channel)}
-                    >
-                        <Volume2 className="channel-icon" size={18} />
-                        <span className="channel-name">{channel.name}</span>
-                    </div>
-                ))}
+                {voiceChannelsList.map((channel) => {
+                    const users = voiceUsers[channel.id] || [];
+
+                    return (
+                        <div key={channel.id}>
+                            <div
+                                id={`voice-channel-${channel.id}`}
+                                className={`channel-item ${activeChannel?.id === channel.id ? 'active' : ''}`}
+                                onClick={() => onSelectChannel(channel)}
+                            >
+                                <Volume2 className="channel-icon" size={18} />
+                                <span className="channel-name">{channel.name}</span>
+                                {users.length > 0 && (
+                                    <span className="voice-user-count">{users.length}</span>
+                                )}
+                            </div>
+
+                            {/* Voice users connected to this channel */}
+                            {users.length > 0 && (
+                                <div className="voice-users">
+                                    {users.map((u) => (
+                                        <div key={u.socketId} className="voice-user">
+                                            <div
+                                                className="voice-avatar"
+                                                style={{ backgroundColor: u.avatar_color || '#5865F2' }}
+                                            >
+                                                {u.display_name?.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="voice-user-name">{u.display_name}</span>
+                                            {u.muted && <MicOff size={12} className="voice-user-muted-icon" />}
+                                            {u.deafened && <HeadphoneOff size={12} className="voice-user-muted-icon" />}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
+
+            {/* Voice Controls (when connected) */}
+            {voiceChannelId && connectedVoiceChannelName && (
+                <VoiceControls
+                    channelName={connectedVoiceChannelName}
+                    isMuted={isMuted}
+                    isDeafened={isDeafened}
+                    onToggleMute={onToggleMute}
+                    onToggleDeafen={onToggleDeafen}
+                    onDisconnect={onDisconnectVoice}
+                />
+            )}
 
             {/* User Panel */}
             <div className="sidebar-user-panel">
