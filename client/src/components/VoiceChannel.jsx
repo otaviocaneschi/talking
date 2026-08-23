@@ -36,7 +36,7 @@ export default function VoiceChannel({
             </div>
 
             {/* Participants Grid */}
-            {channelUsers.length > 0 ? (
+            {channelUsers.length > 0 && (
                 <div className="voice-participants-grid">
                     {channelUsers.map((user) => {
                         const isLocal = user.id === currentUser?.id;
@@ -80,13 +80,31 @@ export default function VoiceChannel({
                         );
                     })}
                 </div>
-            ) : !isConnected ? (
+            )}
+
+            {/* Empty State (Connected but alone) */}
+            {channelUsers.length === 0 && isConnected && (
                 <div className="voice-join-prompt fade-in">
-                    <div className="voice-join-icon">
-                        <PhoneCall />
+                    <div className="voice-join-icon connected">
+                        <Volume2 />
                     </div>
-                    <h3>Canal de Voz</h3>
-                    <p>Clique no botão abaixo para entrar e conversar com seus amigos.</p>
+                    <h3>Conectado</h3>
+                    <p>Aguardando outros participantes entrarem...</p>
+                </div>
+            )}
+
+            {/* Join Prompt / Button (Disconnected) */}
+            {!isConnected && (
+                <div className="voice-join-prompt fade-in" style={channelUsers.length > 0 ? { padding: '32px 20px', flex: 'none' } : {}}>
+                    {channelUsers.length === 0 && (
+                        <>
+                            <div className="voice-join-icon">
+                                <PhoneCall />
+                            </div>
+                            <h3>Canal de Voz</h3>
+                            <p>Clique no botão abaixo para entrar e conversar com seus amigos.</p>
+                        </>
+                    )}
                     <button
                         className="voice-join-btn"
                         onClick={() => onJoin(channel.id)}
@@ -95,14 +113,6 @@ export default function VoiceChannel({
                         <PhoneCall size={18} />
                         Entrar no Canal
                     </button>
-                </div>
-            ) : (
-                <div className="voice-join-prompt fade-in">
-                    <div className="voice-join-icon connected">
-                        <Volume2 />
-                    </div>
-                    <h3>Conectado</h3>
-                    <p>Aguardando outros participantes entrarem...</p>
                 </div>
             )}
         </div>
