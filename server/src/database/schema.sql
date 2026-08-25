@@ -62,3 +62,16 @@ CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id, created_
 CREATE INDEX IF NOT EXISTS idx_messages_user    ON messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_channels_server  ON channels(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_members_user ON server_members(user_id);
+
+-- Tabela de Amigos
+CREATE TABLE IF NOT EXISTS friends (
+    user_id_1 INTEGER NOT NULL,
+    user_id_2 INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id_1, user_id_2),
+    FOREIGN KEY (user_id_1) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id_2) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_friends_user2 ON friends(user_id_2);
+

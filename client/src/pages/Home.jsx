@@ -53,7 +53,7 @@ export default function Home() {
     const [isServerModalOpen, setIsServerModalOpen] = useState(false);
 
     const [channels, setChannels] = useState([]);
-    const [allUsers, setAllUsers] = useState([]);
+    const [friends, setFriends] = useState([]);
     const [activeChannel, setActiveChannel] = useState(null);
     const [messages, setMessages] = useState([]);
     const [typingUsers, setTypingUsers] = useState([]);
@@ -71,12 +71,19 @@ export default function Home() {
         }
     }, []);
 
+    const loadFriends = useCallback(async () => {
+        try {
+            const data = await api.getFriends();
+            setFriends(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load friends', err);
+        }
+    }, []);
+
     useEffect(() => {
         loadServers();
-        api.getUsers().then((data) => {
-            setAllUsers(Array.isArray(data) ? data : []);
-        });
-    }, [loadServers]);
+        loadFriends();
+    }, [loadServers, loadFriends]);
 
     // Carrega canais quando o servidor muda
     useEffect(() => {
@@ -194,6 +201,11 @@ export default function Home() {
         setActiveServerId(joinedServer.id);
     };
 
+    const handleAddFriend = async (username) => {
+        await api.addFriend(username);
+        await loadFriends();
+    };
+
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
     const activeServer = servers.find((s) => s.id === activeServerId);
 
@@ -299,7 +311,8 @@ export default function Home() {
                             </div>
                             <UserList
                                 onlineUsers={onlineUsers}
-                                allUsers={allUsers}
+                                friends={friends}
+                                onAddFriend={handleAddFriend}
                             />
                         </>
                     )}

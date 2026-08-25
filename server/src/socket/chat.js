@@ -21,8 +21,8 @@ function registerChatHandlers(io) {
             socketId: socket.id,
         });
 
-        // Broadcast: usuário ficou online
-        io.emit('user:online', getOnlineUsersList());
+        // Atualiza a presença online para o usuário e seus amigos
+        updatePresenceForUserAndFriends(user.id, io);
 
         // ─── Join Channel ─────────────────────────────────
         socket.on('channel:join', (channelId) => {
@@ -139,7 +139,12 @@ function registerChatHandlers(io) {
         socket.on('disconnect', () => {
             console.log(`🔴 ${user.display_name} (@${user.username}) desconectou`);
             onlineUsers.delete(socket.id);
-            io.emit('user:online', getOnlineUsersList());
+            
+            // Só avisa os amigos se o usuário não tiver mais nenhum socket conectado
+            const isStillOnline = Array.from(onlineUsers.values()).some(u => u.id === user.id);
+            if (!isStillOnline) {
+                updatePresenceForUserAndFriends(user.id, io);
+            }
         });
     });
 }
@@ -150,11 +155,58 @@ function registerChatHandlers(io) {
 function getOnlineUsersList() {
     const usersMap = new Map();
     for (const [, userData] of onlineUsers) {
-        // Usa o user.id como chave para evitar duplicatas
-        // (um usuário pode ter múltiplas conexões)
         usersMap.set(userData.id, userData);
     }
     return Array.from(usersMap.values());
+}
+
+/**
+ * Recalcula e envia a lista de amigos online para um usuário específico.
+ */
+function broadcastOnlineFriends(userId, io) {
+    const db = getDatabase();
+    
+    const friends = db.prepare(`
+        SELECT 
+            u.id, 
+            u.username, 
+            u.display_name, 
+            u.avatar_color
+        FROM friends f
+        JOIN users u ON (
+            (f.user_id_1 = ? AND f.user_id_2 = u.id) OR 
+            (f.user_id_2 = ? AND f.user_id_1 = u.id)
+        )
+    `).all(userId, userId);
+
+    const onlineMap = getOnlineUsersList();
+    const onlineFriends = friends.filter(f => onlineMap.some(ou => ou.id === f.id));
+
+    for (const [socketId, userData] of onlineUsers.entries()) {
+        if (userData.id === userId) {
+            io.to(socketId).emit('user:online', onlineFriends);
+        }
+    }
+}
+
+/**
+ * Atualiza a presença online para o usuário e notifica todos os seus amigos.
+ */
+function updatePresenceForUserAndFriends(userId, io) {
+    // 1. Atualiza a tela do próprio usuário
+    broadcastOnlineFriends(userId, io);
+
+    // 2. Descobre quem são os amigos dele e pede para atualizar a tela deles também
+    const db = getDatabase();
+    const friends = db.prepare(`
+        SELECT user_id_2 as friend_id FROM friends WHERE user_id_1 = ?
+        UNION
+        SELECT user_id_1 as friend_id FROM friends WHERE user_id_2 = ?
+    `).all(userId, userId);
+
+    for (const row of friends) {
+        broadcastOnlineFriends(row.friend_id, io);
+    }
 }
 
 module.exports = { registerChatHandlers, onlineUsers };

@@ -14,6 +14,7 @@ const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
 const userRoutes = require('./routes/users');
 const serverRoutes = require('./routes/servers');
+const friendsRoutes = require('./routes/friends');
 
 // ─── Configuração ───────────────────────────────────────
 const PORT = process.env.PORT || 3001;
@@ -57,6 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/servers', serverRoutes);
+app.use('/api/friends', friendsRoutes);
 
 // ─── Servir o frontend (produção / ngrok) ───────────────
 const clientDistPath = require('path').join(__dirname, '..', '..', 'client', 'dist');
