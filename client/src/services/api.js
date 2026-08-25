@@ -66,6 +66,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ targetUserId })
     }),
+
+    // Version
+    getVersion: () => request('/version'),
 };
 
 export { API_URL };

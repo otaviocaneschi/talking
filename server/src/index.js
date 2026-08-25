@@ -60,6 +60,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/servers', serverRoutes);
 app.use('/api/friends', friendsRoutes);
 
+app.get('/api/version', (req, res) => {
+    res.json({
+        version: process.env.CLIENT_VERSION || '1.0.0',
+        downloadUrl: process.env.CLIENT_DOWNLOAD_URL || ''
+    });
+});
+
 // ─── Servir o frontend (produção / ngrok) ───────────────
 const clientDistPath = require('path').join(__dirname, '..', '..', 'client', 'dist');
 if (require('fs').existsSync(clientDistPath)) {
