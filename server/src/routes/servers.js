@@ -1,12 +1,12 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
-const { requireAuth } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 const crypto = require('crypto');
 
 const router = express.Router();
 
 // All routes require auth
-router.use(requireAuth);
+router.use(authMiddleware);
 
 /**
  * GET /api/servers
