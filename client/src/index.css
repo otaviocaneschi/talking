@@ -1954,11 +1954,15 @@ a {
 }
 
 .control-btn.active-noise {
-    color: var(--success);
+    color: var(--bg-primary);
+    background-color: var(--accent-success);
+}
+.control-btn.active-noise:hover {
+    background-color: #10b981;
 }
 
 .control-btn.active-screen {
-    color: var(--brand);
+    color: var(--accent-primary);
 }
 
 .modal-tab.active {
