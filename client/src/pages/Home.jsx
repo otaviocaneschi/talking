@@ -43,6 +43,7 @@ export default function Home() {
         startScreenShare,
         stopScreenShare,
         setPeerVolume,
+        peerConnectionStates,
     } = useWebRTC(socket, {
         audioInputDeviceId,
         audioOutputDeviceId,
