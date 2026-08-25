@@ -119,6 +119,14 @@ export function useWebRTC(socket, options = {}) {
         }
     }, []);
 
+    // ─── Controla o volume remoto ────────────────────────
+    const setPeerVolume = useCallback((socketId, volume) => {
+        const audio = audioElements.current.get(socketId);
+        if (audio) {
+            audio.volume = volume;
+        }
+    }, []);
+
     // ─── Cria PeerConnection para um peer ────────────────
     const createPeerConnection = useCallback((targetSocketId) => {
         if (peerConnections.current.has(targetSocketId)) {
@@ -673,5 +681,6 @@ export function useWebRTC(socket, options = {}) {
         changeAudioOutput,
         startScreenShare,
         stopScreenShare,
+        setPeerVolume,
     };
 }

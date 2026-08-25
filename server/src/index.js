@@ -41,7 +41,7 @@ app.get('/api/health', (req, res) => {
 
     res.json({
         status: 'online',
-        name: 'Discord2 Server',
+        name: 'Talking Server',
         version: '1.0.0',
         database: {
             users: userCount.count,
@@ -82,7 +82,7 @@ registerSignalingHandlers(io);
 // ─── Inicia o servidor ──────────────────────────────────
 httpServer.listen(PORT, () => {
     console.log('\n🚀 ═══════════════════════════════════════');
-    console.log(`   Discord2 Server rodando na porta ${PORT}`);
+    console.log(`🚀 Talking Server rodando na porta ${PORT}`);
     console.log('═══════════════════════════════════════════');
     console.log(`   API:    http://localhost:${PORT}/api/health`);
     console.log(`   Auth:   POST http://localhost:${PORT}/api/auth/login`);

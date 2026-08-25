@@ -64,7 +64,7 @@ export default function Login() {
                     <div className="login-logo-icon">
                         <MessageSquare />
                     </div>
-                    <span className="login-logo-text">Discord2</span>
+                    <span className="login-logo-text">Talking</span>
                 </div>
 
                 <p className="login-subtitle">

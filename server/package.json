@@ -1,5 +1,5 @@
 {
-  "name": "discord2-server",
+  "name": "talking-server",
   "version": "1.0.0",
   "description": "Servidor backend do Discord privado",
   "main": "src/index.js",

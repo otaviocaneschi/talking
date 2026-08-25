@@ -1782,3 +1782,8 @@ a {
   height: 100vh;
   aspect-ratio: auto;
 }
+
+/* Volume Slider */
+.voice-participant-volume { margin-top: 8px; width: 80%; }
+.volume-slider { width: 100%; cursor: pointer; accent-color: var(--accent-primary); }
+

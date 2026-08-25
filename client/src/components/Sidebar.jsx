@@ -28,7 +28,7 @@ export default function Sidebar({
             {/* Header */}
             <div className="sidebar-header">
                 <MessageSquare className="logo-icon" size={20} />
-                <span>Discord2</span>
+                <span>Talking</span>
             </div>
 
             {/* Text Channels */}

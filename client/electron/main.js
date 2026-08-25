@@ -12,7 +12,7 @@ function createWindow() {
         height: 800,
         minWidth: 940,
         minHeight: 600,
-        title: 'Discord2',
+        title: 'Talking',
         icon: path.join(__dirname, '..', 'public', 'icon.png'),
         backgroundColor: '#1a1a2e',
         autoHideMenuBar: true,

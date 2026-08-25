@@ -1,8 +1,8 @@
 {
-  "name": "discord2",
+  "name": "talking",
   "private": true,
   "version": "1.0.0",
-  "description": "Discord2 — Chat privado para amigos",
+  "description": "Talking — Chat privado para amigos",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {

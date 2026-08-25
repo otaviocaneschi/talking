@@ -16,6 +16,7 @@ export default function VoiceChannel({
     screenShareStream,
     remoteScreenShare,
     onStopScreenShare,
+    setPeerVolume,
 }) {
     if (!channel) return null;
 
@@ -28,7 +29,7 @@ export default function VoiceChannel({
     const hasScreenShare = hasLocalScreenShare || hasRemoteScreenShare;
 
     return (
-        <div className="voice-channel-view">
+        <div className="voice-channel-view" style={{ position: 'relative', paddingBottom: !isConnected && channelUsers.length > 0 ? '80px' : '0' }}>
             {/* Header */}
             <div className="voice-channel-header fade-in">
                 <div className="voice-channel-icon">
@@ -101,6 +102,21 @@ export default function VoiceChannel({
                                         </span>
                                     )}
                                 </div>
+
+                                {!isLocal && isConnected && (
+                                    <div className="voice-participant-volume" onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.01"
+                                            defaultValue="1"
+                                            onChange={(e) => setPeerVolume && setPeerVolume(user.socketId, parseFloat(e.target.value))}
+                                            className="volume-slider"
+                                            title="Ajustar volume"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -120,8 +136,23 @@ export default function VoiceChannel({
 
             {/* Join Prompt / Button (Disconnected) */}
             {!isConnected && (
-                <div className="voice-join-prompt fade-in" style={channelUsers.length > 0 ? { padding: '32px 20px', flex: 'none' } : {}}>
-                    {channelUsers.length === 0 && (
+                <div 
+                    className="voice-join-prompt fade-in" 
+                    style={channelUsers.length > 0 ? { 
+                        position: 'absolute', 
+                        bottom: 0, 
+                        left: 0, 
+                        right: 0, 
+                        background: 'rgba(30, 31, 34, 0.9)', 
+                        borderTop: '1px solid rgba(255,255,255,0.1)', 
+                        padding: '16px', 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between',
+                        backdropFilter: 'blur(8px)',
+                        zIndex: 10
+                    } : {}}
+                >
+                    {channelUsers.length === 0 ? (
                         <>
                             <div className="voice-join-icon">
                                 <PhoneCall />
@@ -129,6 +160,11 @@ export default function VoiceChannel({
                             <h3>Canal de Voz</h3>
                             <p>Clique no botão abaixo para entrar e conversar com seus amigos.</p>
                         </>
+                    ) : (
+                        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                            <h3 style={{margin: 0, fontSize: '16px'}}>Junte-se à chamada</h3>
+                            <p style={{margin: 0, fontSize: '12px', color: '#b5bac1'}}>Amigos estão conversando agora mesmo.</p>
+                        </div>
                     )}
                     <button
                         className="voice-join-btn"
