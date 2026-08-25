@@ -272,6 +272,11 @@ export function useWebRTC(socket, options = {}) {
 
     // ─── Join Voice Channel ──────────────────────────────
     const joinVoice = useCallback(async (channelId) => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('⚠️ Canais de voz requerem conexão segura (HTTPS).\n\nO navegador bloqueia o acesso ao microfone em sites sem HTTPS.\nPeça ao administrador para configurar um domínio com SSL.');
+            return;
+        }
+
         if (isConnected.current) {
             // Já está em um canal, sai primeiro
             leaveVoice();
