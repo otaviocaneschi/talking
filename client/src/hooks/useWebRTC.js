@@ -51,9 +51,16 @@ export function useWebRTC(socket, options = {}) {
     const remoteStreams = useRef(new Map());    // Map<socketId, MediaStream>
     const localStream = useRef(null);
     const audioElements = useRef(new Map());   // Map<socketId, HTMLAudioElement>
+    const vadInterval = useRef(null);
     const audioContext = useRef(null);
     const analyserNode = useRef(null);
-    const vadInterval = useRef(null);
+    
+    // DSP Nodes
+    const processedStream = useRef(null);
+    const noiseGateNode = useRef(null);
+    const highpassNode = useRef(null);
+    const lowpassNode = useRef(null);
+
     const isConnected = useRef(false);
     const screenStream = useRef(null);         // MediaStream da tela compartilhada
     const screenSenders = useRef(new Map());   // Map<socketId, RTCRtpSender> (video senders)
@@ -116,6 +123,10 @@ export function useWebRTC(socket, options = {}) {
             audioContext.current.close().catch(() => {});
             audioContext.current = null;
             analyserNode.current = null;
+            processedStream.current = null;
+            noiseGateNode.current = null;
+            highpassNode.current = null;
+            lowpassNode.current = null;
         }
 
         makingOffer.current.clear();
@@ -241,7 +252,11 @@ export function useWebRTC(socket, options = {}) {
         };
 
         // 2. Add Tracks (this will now reliably fire onnegotiationneeded)
-        if (localStream.current) {
+        if (processedStream.current) {
+            processedStream.current.getTracks().forEach((track) => {
+                pc.addTrack(track, processedStream.current);
+            });
+        } else if (localStream.current) {
             localStream.current.getTracks().forEach((track) => {
                 pc.addTrack(track, localStream.current);
             });
@@ -266,10 +281,38 @@ export function useWebRTC(socket, options = {}) {
         try {
             audioContext.current = new AudioContext();
             const source = audioContext.current.createMediaStreamSource(localStream.current);
+            
+            // ─── DSP Pipeline ───
+            // 1. Highpass Filter (Corta < 80Hz - vento, batidas na mesa)
+            highpassNode.current = audioContext.current.createBiquadFilter();
+            highpassNode.current.type = 'highpass';
+            highpassNode.current.frequency.value = options.noiseSuppressionEnabled !== false ? 80 : 0;
+            
+            // 2. Lowpass Filter (Corta > 8000Hz - chiado/estática)
+            lowpassNode.current = audioContext.current.createBiquadFilter();
+            lowpassNode.current.type = 'lowpass';
+            lowpassNode.current.frequency.value = options.noiseSuppressionEnabled !== false ? 8000 : 24000;
+            
+            // 3. Noise Gate (Muta o áudio quando não está falando)
+            noiseGateNode.current = audioContext.current.createGain();
+            noiseGateNode.current.gain.value = 1; // Default aberto
+            
+            // 4. Destination (Novo stream processado)
+            const destination = audioContext.current.createMediaStreamDestination();
+            processedStream.current = destination.stream;
+
+            // Conectar o pipeline de áudio
+            source.connect(highpassNode.current);
+            highpassNode.current.connect(lowpassNode.current);
+            lowpassNode.current.connect(noiseGateNode.current);
+            noiseGateNode.current.connect(destination);
+
+            // ─── VAD Analyser ───
             analyserNode.current = audioContext.current.createAnalyser();
             analyserNode.current.fftSize = 512;
             analyserNode.current.smoothingTimeConstant = 0.4;
-            source.connect(analyserNode.current);
+            // VAD escuta o áudio DEPOIS dos filtros, mas ANTES do Noise Gate mutar!
+            lowpassNode.current.connect(analyserNode.current);
 
             const dataArray = new Uint8Array(analyserNode.current.frequencyBinCount);
 
@@ -278,15 +321,24 @@ export function useWebRTC(socket, options = {}) {
 
                 analyserNode.current.getByteFrequencyData(dataArray);
 
-                // Calcula o volume médio
                 let sum = 0;
                 for (let i = 0; i < dataArray.length; i++) {
                     sum += dataArray[i];
                 }
                 const average = sum / dataArray.length;
 
-                // Threshold de ~15 para detectar fala
+                // Threshold para detectar fala
                 const isSpeaking = average > 15;
+
+                // Aplica o Noise Gate (se a supressão estiver ligada)
+                if (noiseGateNode.current) {
+                    if (options.noiseSuppressionEnabled !== false) {
+                        // Transição suave para evitar "cliques" no áudio
+                        noiseGateNode.current.gain.setTargetAtTime(isSpeaking ? 1 : 0, audioContext.current.currentTime, 0.05);
+                    } else {
+                        noiseGateNode.current.gain.setTargetAtTime(1, audioContext.current.currentTime, 0.05);
+                    }
+                }
 
                 setSpeakingUsers((prev) => {
                     const next = new Set(prev);
@@ -295,7 +347,6 @@ export function useWebRTC(socket, options = {}) {
                     } else {
                         next.delete('local');
                     }
-                    // Só atualiza se mudou
                     if (next.size !== prev.size || ![...next].every((v) => prev.has(v))) {
                         return next;
                     }
@@ -303,9 +354,9 @@ export function useWebRTC(socket, options = {}) {
                 });
             }, 100);
         } catch (err) {
-            console.error('Erro no VAD:', err);
+            console.error('Erro no VAD/DSP:', err);
         }
-    }, []);
+    }, [options.noiseSuppressionEnabled]);
 
     // ─── Join Voice Channel ──────────────────────────────
     const joinVoice = useCallback(async (channelId) => {
@@ -420,15 +471,6 @@ export function useWebRTC(socket, options = {}) {
 
             const newTrack = newStream.getAudioTracks()[0];
 
-            // Substitui a track em todas as peer connections
-            for (const [, pc] of peerConnections.current) {
-                const senders = pc.getSenders();
-                const audioSender = senders.find((s) => s.track?.kind === 'audio');
-                if (audioSender) {
-                    await audioSender.replaceTrack(newTrack);
-                }
-            }
-
             // Para o track antigo
             localStream.current.getAudioTracks().forEach((t) => t.stop());
 
@@ -439,7 +481,7 @@ export function useWebRTC(socket, options = {}) {
             // Aplica o estado de mute atual
             newTrack.enabled = !isMuted;
 
-            // Reinicia o VAD com o novo stream
+            // Reinicia o VAD e o DSP pipeline com o novo stream
             if (vadInterval.current) {
                 clearInterval(vadInterval.current);
                 vadInterval.current = null;
@@ -448,8 +490,22 @@ export function useWebRTC(socket, options = {}) {
                 audioContext.current.close().catch(() => {});
                 audioContext.current = null;
                 analyserNode.current = null;
+                processedStream.current = null;
+                noiseGateNode.current = null;
+                highpassNode.current = null;
+                lowpassNode.current = null;
             }
             startVAD();
+
+            // Substitui a track em todas as peer connections pelo NOVO track processado!
+            const processedTrack = processedStream.current ? processedStream.current.getAudioTracks()[0] : newTrack;
+            for (const [, pc] of peerConnections.current) {
+                const senders = pc.getSenders();
+                const audioSender = senders.find((s) => s.track?.kind === 'audio');
+                if (audioSender && processedTrack) {
+                    await audioSender.replaceTrack(processedTrack);
+                }
+            }
         } catch (err) {
             console.error('Erro ao trocar microfone:', err);
         }
@@ -699,6 +755,17 @@ export function useWebRTC(socket, options = {}) {
                     echoCancellation: true,
                     autoGainControl: false,
                 }).catch(err => console.error("Error applying noise suppression constraint", err));
+            }
+        }
+
+        // Atualiza os filtros do DSP dinamicamente
+        if (audioContext.current && highpassNode.current && lowpassNode.current) {
+            if (options.noiseSuppressionEnabled !== false) {
+                highpassNode.current.frequency.setTargetAtTime(80, audioContext.current.currentTime, 0.1);
+                lowpassNode.current.frequency.setTargetAtTime(8000, audioContext.current.currentTime, 0.1);
+            } else {
+                highpassNode.current.frequency.setTargetAtTime(0, audioContext.current.currentTime, 0.1);
+                lowpassNode.current.frequency.setTargetAtTime(24000, audioContext.current.currentTime, 0.1);
             }
         }
     }, [options.noiseSuppressionEnabled]);
