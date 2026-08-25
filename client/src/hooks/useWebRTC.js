@@ -375,7 +375,7 @@ export function useWebRTC(socket, options = {}) {
             const audioConstraints = {
                 echoCancellation: true,
                 noiseSuppression: options.noiseSuppressionEnabled !== false,
-                autoGainControl: false,
+                autoGainControl: true,
             };
 
             if (audioInputDeviceId) {
@@ -464,7 +464,7 @@ export function useWebRTC(socket, options = {}) {
                     deviceId: { exact: deviceId },
                     echoCancellation: true,
                     noiseSuppression: options.noiseSuppressionEnabled !== false,
-                    autoGainControl: false,
+                    autoGainControl: true,
                 },
                 video: false,
             });
@@ -753,7 +753,7 @@ export function useWebRTC(socket, options = {}) {
                 track.applyConstraints({
                     noiseSuppression: options.noiseSuppressionEnabled !== false,
                     echoCancellation: true,
-                    autoGainControl: false,
+                    autoGainControl: true,
                 }).catch(err => console.error("Error applying noise suppression constraint", err));
             }
         }

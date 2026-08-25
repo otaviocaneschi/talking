@@ -3,14 +3,29 @@
   "private": true,
   "version": "1.0.0",
   "description": "Talking — Chat privado para amigos",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "electron:dev": "electron . --dev",
+    "electron:pack": "vite build && electron-builder --win",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.talking.app",
+    "productName": "Talking",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ]
   },
   "dependencies": {
     "lucide-react": "^1.33.0",
@@ -24,6 +39,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "electron-squirrel-startup": "^1.0.1",
     "oxlint": "^1.75.0",
     "vite": "^8.2.0"
