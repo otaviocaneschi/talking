@@ -51,6 +51,13 @@ export const api = {
     // Users
     getUsers: () => request('/users'),
     getMe: () => request('/users/me'),
+
+    // Friends
+    getFriends: () => request('/friends'),
+    addFriend: (username) => request('/friends/add', {
+        method: 'POST',
+        body: JSON.stringify({ username })
+    }),
 };
 
 export { API_URL };
