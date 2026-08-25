@@ -14,13 +14,13 @@ function createTestUsers() {
         const passwordHash = bcrypt.hashSync('batata', saltRounds);
 
         const insertUser = db.prepare(`
-            INSERT INTO users (username, display_name, email, password_hash, avatar_color)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO users (username, display_name, password_hash, avatar_color)
+            VALUES (?, ?, ?, ?)
         `);
 
         // Teste 1
         try {
-            insertUser.run('teste1', 'Teste 1', 'teste1@talking.com', passwordHash, '#FF5733');
+            insertUser.run('teste1', 'Teste 1', passwordHash, '#FF5733');
             console.log('✅ Usuário teste1 criado com sucesso!');
         } catch (e) {
             if (e.message.includes('UNIQUE constraint failed')) {
@@ -32,7 +32,7 @@ function createTestUsers() {
 
         // Teste 2
         try {
-            insertUser.run('teste2', 'Teste 2', 'teste2@talking.com', passwordHash, '#33FF57');
+            insertUser.run('teste2', 'Teste 2', passwordHash, '#33FF57');
             console.log('✅ Usuário teste2 criado com sucesso!');
         } catch (e) {
             if (e.message.includes('UNIQUE constraint failed')) {
