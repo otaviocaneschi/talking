@@ -307,7 +307,6 @@ export function useWebRTC(socket, options = {}) {
                 autoGainControl: true,
             };
 
-            // Se tiver um deviceId selecionado, usa ele
             if (audioInputDeviceId) {
                 audioConstraints.deviceId = { exact: audioInputDeviceId };
             }

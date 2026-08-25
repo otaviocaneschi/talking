@@ -58,6 +58,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ username })
     }),
+    acceptFriend: (targetUserId) => request('/friends/accept', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId })
+    }),
+    rejectFriend: (targetUserId) => request('/friends/reject', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId })
+    }),
 };
 
 export { API_URL };

@@ -206,6 +206,16 @@ export default function Home() {
         await loadFriends();
     };
 
+    const handleAcceptFriend = async (id) => {
+        await api.acceptFriend(id);
+        await loadFriends();
+    };
+
+    const handleRejectFriend = async (id) => {
+        await api.rejectFriend(id);
+        await loadFriends();
+    };
+
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
     const activeServer = servers.find((s) => s.id === activeServerId);
 
@@ -313,6 +323,9 @@ export default function Home() {
                                 onlineUsers={onlineUsers}
                                 friends={friends}
                                 onAddFriend={handleAddFriend}
+                                onAcceptFriend={handleAcceptFriend}
+                                onRejectFriend={handleRejectFriend}
+                                currentUserId={user.id}
                             />
                         </>
                     )}

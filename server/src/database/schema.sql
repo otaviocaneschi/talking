@@ -67,10 +67,13 @@ CREATE INDEX IF NOT EXISTS idx_server_members_user ON server_members(user_id);
 CREATE TABLE IF NOT EXISTS friends (
     user_id_1 INTEGER NOT NULL,
     user_id_2 INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sender_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id_1, user_id_2),
     FOREIGN KEY (user_id_1) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id_2) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id_2) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_friends_user2 ON friends(user_id_2);
