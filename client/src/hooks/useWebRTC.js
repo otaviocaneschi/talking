@@ -42,6 +42,8 @@ export function useWebRTC(socket, options = {}) {
     const screenStream = useRef(null);         // MediaStream da tela compartilhada
     const screenSenders = useRef(new Map());   // Map<socketId, RTCRtpSender> (video senders)
     const currentOutputDeviceId = useRef(audioOutputDeviceId || '');
+    const makingOffer = useRef(new Map());     // Map<socketId, boolean>
+    const ignoreOffer = useRef(new Map());     // Map<socketId, boolean>
 
     // ─── Cleanup de um peer ──────────────────────────────
     const cleanupPeer = useCallback((socketId) => {
@@ -60,6 +62,9 @@ export function useWebRTC(socket, options = {}) {
             audio.remove();
             audioElements.current.delete(socketId);
         }
+
+        makingOffer.current.delete(socketId);
+        ignoreOffer.current.delete(socketId);
     }, []);
 
     // ─── Cleanup total ───────────────────────────────────
@@ -96,6 +101,9 @@ export function useWebRTC(socket, options = {}) {
             audioContext.current = null;
             analyserNode.current = null;
         }
+
+        makingOffer.current.clear();
+        ignoreOffer.current.clear();
 
         isConnected.current = false;
         setSpeakingUsers(new Set());
@@ -210,11 +218,10 @@ export function useWebRTC(socket, options = {}) {
 
         // Necessário para renegociar quando adicionamos/removemos tracks
         pc.onnegotiationneeded = async () => {
-            // Só renegocia se a connection já está estável
-            if (pc.signalingState !== 'stable') return;
-
             try {
+                makingOffer.current.set(targetSocketId, true);
                 const offer = await pc.createOffer();
+                if (pc.signalingState !== 'stable') return;
                 await pc.setLocalDescription(offer);
 
                 socket?.emit('webrtc:offer', {
@@ -223,6 +230,8 @@ export function useWebRTC(socket, options = {}) {
                 });
             } catch (err) {
                 console.error('Erro na renegociação:', err);
+            } finally {
+                makingOffer.current.set(targetSocketId, false);
             }
         };
 
@@ -531,20 +540,7 @@ export function useWebRTC(socket, options = {}) {
         // Lista de peers já no canal (ao entrar)
         const handlePeers = async ({ peers }) => {
             for (const peer of peers) {
-                const pc = createPeerConnection(peer.socketId);
-
-                // Cria offer para cada peer existente
-                try {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-
-                    socket.emit('webrtc:offer', {
-                        targetSocketId: peer.socketId,
-                        offer: pc.localDescription,
-                    });
-                } catch (err) {
-                    console.error('Erro ao criar offer:', err);
-                }
+                createPeerConnection(peer.socketId);
             }
         };
 
@@ -570,6 +566,14 @@ export function useWebRTC(socket, options = {}) {
             let pc = peerConnections.current.get(fromSocketId);
             if (!pc) {
                 pc = createPeerConnection(fromSocketId);
+            }
+
+            const polite = socket.id > fromSocketId;
+            const offerCollision = makingOffer.current.get(fromSocketId) || pc.signalingState !== 'stable';
+
+            ignoreOffer.current.set(fromSocketId, !polite && offerCollision);
+            if (ignoreOffer.current.get(fromSocketId)) {
+                return;
             }
 
             try {
@@ -605,7 +609,9 @@ export function useWebRTC(socket, options = {}) {
                 try {
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch (err) {
-                    console.error('Erro ao adicionar ICE candidate:', err);
+                    if (!ignoreOffer.current.get(fromSocketId)) {
+                        console.error('Erro ao adicionar ICE candidate:', err);
+                    }
                 }
             }
         };
