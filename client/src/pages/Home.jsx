@@ -24,6 +24,17 @@ export default function Home() {
         () => localStorage.getItem('audioOutputDeviceId') || ''
     );
     const [showAudioSettings, setShowAudioSettings] = useState(false);
+    const [noiseSuppressionEnabled, setNoiseSuppressionEnabled] = useState(
+        () => localStorage.getItem('noiseSuppression') !== 'false'
+    );
+
+    const toggleNoiseSuppression = () => {
+        setNoiseSuppressionEnabled(prev => {
+            const next = !prev;
+            localStorage.setItem('noiseSuppression', next.toString());
+            return next;
+        });
+    };
 
     const {
         voiceChannelId,
@@ -47,6 +58,7 @@ export default function Home() {
     } = useWebRTC(socket, {
         audioInputDeviceId,
         audioOutputDeviceId,
+        noiseSuppressionEnabled,
     });
 
     const [servers, setServers] = useState([]);
@@ -245,8 +257,9 @@ export default function Home() {
                 onToggleScreenShare={handleToggleScreenShare}
                 onDisconnectVoice={leaveVoice}
                 onOpenAudioSettings={() => setShowAudioSettings(true)}
+                noiseSuppressionEnabled={noiseSuppressionEnabled}
+                onToggleNoiseSuppression={toggleNoiseSuppression}
             />
-
             <div className="main-content">
                 {/* Header */}
                 <div className="chat-header">

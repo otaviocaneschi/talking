@@ -1949,6 +1949,18 @@ a {
 .modal-tab:hover {
   color: var(--text-primary);
 }
+.control-btn.active-danger {
+    color: var(--danger);
+}
+
+.control-btn.active-noise {
+    color: var(--success);
+}
+
+.control-btn.active-screen {
+    color: var(--brand);
+}
+
 .modal-tab.active {
   color: var(--accent-primary);
   border-bottom-color: var(--accent-primary);

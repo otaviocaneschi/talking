@@ -1,4 +1,4 @@
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal, Monitor, MonitorOff, Settings } from 'lucide-react';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal, Monitor, MonitorOff, Settings, Activity } from 'lucide-react';
 
 /**
  * Barra de controles de voz.
@@ -14,6 +14,8 @@ export default function VoiceControls({
     onToggleScreenShare,
     onDisconnect,
     onOpenSettings,
+    noiseSuppressionEnabled,
+    onToggleNoiseSuppression,
 }) {
     return (
         <div className="voice-controls slide-in">
@@ -53,6 +55,15 @@ export default function VoiceControls({
                     id="voice-screen-share-btn"
                 >
                     {isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />}
+                </button>
+
+                <button
+                    className={`control-btn ${noiseSuppressionEnabled ? 'active-noise' : ''}`}
+                    onClick={onToggleNoiseSuppression}
+                    title={noiseSuppressionEnabled ? 'Desativar Supressão de Ruído' : 'Ativar Supressão de Ruído'}
+                    id="voice-noise-suppression-btn"
+                >
+                    <Activity size={18} />
                 </button>
 
                 <button

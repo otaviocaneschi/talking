@@ -18,6 +18,8 @@ export default function Sidebar({
     onToggleScreenShare,
     onDisconnectVoice,
     onOpenAudioSettings,
+    noiseSuppressionEnabled,
+    onToggleNoiseSuppression,
 }) {
     const { user, logout } = useAuth();
 
@@ -112,6 +114,8 @@ export default function Sidebar({
                     onToggleScreenShare={onToggleScreenShare}
                     onDisconnect={onDisconnectVoice}
                     onOpenSettings={onOpenAudioSettings}
+                    noiseSuppressionEnabled={noiseSuppressionEnabled}
+                    onToggleNoiseSuppression={onToggleNoiseSuppression}
                 />
             )}
 

@@ -323,7 +323,7 @@ export function useWebRTC(socket, options = {}) {
             // Captura áudio do microfone com o device selecionado
             const audioConstraints = {
                 echoCancellation: true,
-                noiseSuppression: true,
+                noiseSuppression: options.noiseSuppressionEnabled !== false,
                 autoGainControl: true,
             };
 
@@ -412,7 +412,7 @@ export function useWebRTC(socket, options = {}) {
                 audio: {
                     deviceId: { exact: deviceId },
                     echoCancellation: true,
-                    noiseSuppression: true,
+                    noiseSuppression: options.noiseSuppressionEnabled !== false,
                     autoGainControl: true,
                 },
                 video: false,
@@ -688,6 +688,20 @@ export function useWebRTC(socket, options = {}) {
             cleanupAll();
         };
     }, [cleanupAll]);
+
+    // ─── Atualiza constraint de supressão de ruído ────────
+    useEffect(() => {
+        if (localStream.current) {
+            const track = localStream.current.getAudioTracks()[0];
+            if (track) {
+                track.applyConstraints({
+                    noiseSuppression: options.noiseSuppressionEnabled !== false,
+                    echoCancellation: true,
+                    autoGainControl: true,
+                }).catch(err => console.error("Error applying noise suppression constraint", err));
+            }
+        }
+    }, [options.noiseSuppressionEnabled]);
 
     return {
         voiceChannelId,
