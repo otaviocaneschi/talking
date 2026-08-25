@@ -293,6 +293,7 @@ export default function Home() {
                             remoteScreenShare={remoteScreenShare}
                             onStopScreenShare={stopScreenShare}
                             setPeerVolume={setPeerVolume}
+                            peerConnectionStates={peerConnectionStates}
                         />
                     ) : (
                         <>

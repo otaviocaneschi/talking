@@ -43,7 +43,8 @@ export function useWebRTC(socket, options = {}) {
     const [speakingUsers, setSpeakingUsers] = useState(new Set());
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [screenShareStream, setScreenShareStream] = useState(null);
-    const [remoteScreenShare, setRemoteScreenShare] = useState(null); // { socketId, displayName, stream }
+    const [remoteScreenShare, setRemoteScreenShare] = useState(null);
+    const [peerConnectionStates, setPeerConnectionStates] = useState({}); // { socketId, displayName, stream }
 
     // ─── Refs ────────────────────────────────────────────
     const peerConnections = useRef(new Map()); // Map<socketId, RTCPeerConnection>
@@ -133,6 +134,7 @@ export function useWebRTC(socket, options = {}) {
             audioElements.current.set(socketId, audio);
         }
         audio.srcObject = stream;
+        audio.play().catch((e) => console.warn('Autoplay blocked:', e));
 
         // Aplica o dispositivo de saída atual
         if (currentOutputDeviceId.current && typeof audio.setSinkId === 'function') {
@@ -226,6 +228,10 @@ export function useWebRTC(socket, options = {}) {
         };
 
         pc.onconnectionstatechange = () => {
+            setPeerConnectionStates(prev => ({
+                ...prev,
+                [targetSocketId]: pc.connectionState
+            }));
             if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
                 console.warn(`⚠️ Peer ${targetSocketId}: ${pc.connectionState}`);
             }
@@ -702,5 +708,6 @@ export function useWebRTC(socket, options = {}) {
         startScreenShare,
         stopScreenShare,
         setPeerVolume,
+        peerConnectionStates,
     };
 }

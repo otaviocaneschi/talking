@@ -17,6 +17,7 @@ export default function VoiceChannel({
     remoteScreenShare,
     onStopScreenShare,
     setPeerVolume,
+    peerConnectionStates,
 }) {
     if (!channel) return null;
 
@@ -99,6 +100,11 @@ export default function VoiceChannel({
                                     {user.deafened && (
                                         <span className="voice-indicator deafened" title="Ensurdecido">
                                             <HeadphoneOff size={14} />
+                                        </span>
+                                    )}
+                                    {!isLocal && peerConnectionStates && peerConnectionStates[user.socketId] && (
+                                        <span className="voice-indicator" style={{ fontSize: '10px', background: 'transparent' }} title={`Estado da Conexão: ${peerConnectionStates[user.socketId]}`}>
+                                            {peerConnectionStates[user.socketId] === 'connected' ? '✅' : '⏳'}
                                         </span>
                                     )}
                                 </div>
