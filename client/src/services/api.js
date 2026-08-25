@@ -34,9 +34,19 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ username, password }),
         }),
+    signup: (username, display_name, password) =>
+        request('/auth/signup', {
+            method: 'POST',
+            body: JSON.stringify({ username, display_name, password }),
+        }),
+
+    // Servers
+    getServers: () => request('/servers'),
+    createServer: (name) => request('/servers', { method: 'POST', body: JSON.stringify({ name }) }),
+    joinServer: (invite_code) => request('/servers/join', { method: 'POST', body: JSON.stringify({ invite_code }) }),
 
     // Channels
-    getChannels: () => request('/channels'),
+    getChannels: (serverId) => request(`/servers/${serverId}/channels`),
 
     // Users
     getUsers: () => request('/users'),

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import VoiceControls from './VoiceControls';
 
 export default function Sidebar({
+    server,
     channels,
     activeChannel,
     onSelectChannel,
@@ -26,9 +27,11 @@ export default function Sidebar({
     return (
         <div className="sidebar">
             {/* Header */}
-            <div className="sidebar-header">
-                <MessageSquare className="logo-icon" size={20} />
-                <span>Talking</span>
+            <div className="sidebar-header" style={{ justifyContent: 'space-between' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {server ? server.name : 'Selecione um Servidor'}
+                </span>
+                <ChevronDown size={16} />
             </div>
 
             {/* Text Channels */}

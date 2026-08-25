@@ -35,6 +35,14 @@ export function AuthProvider({ children }) {
         return data;
     };
 
+    const signup = async (username, display_name, password) => {
+        const data = await api.signup(username, display_name, password);
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setUser(data.user);
+        return data;
+    };
+
     const logout = () => {
         localStorage.removeItem('token');
         setToken(null);
@@ -42,7 +50,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

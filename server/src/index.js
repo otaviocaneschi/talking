@@ -13,6 +13,7 @@ const { registerSignalingHandlers } = require('./socket/signaling');
 const authRoutes = require('./routes/auth');
 const channelRoutes = require('./routes/channels');
 const userRoutes = require('./routes/users');
+const serverRoutes = require('./routes/servers');
 
 // ─── Configuração ───────────────────────────────────────
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/servers', serverRoutes);
 
 // ─── Servir o frontend (produção / ngrok) ───────────────
 const clientDistPath = require('path').join(__dirname, '..', '..', 'client', 'dist');

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, MessageSquare, AlertCircle } from 'lucide-react';
+import { User, Lock, MessageSquare, AlertCircle, UserPlus } from 'lucide-react';
 
 // Partículas flutuantes do background
 function Particles() {
@@ -34,9 +34,11 @@ function Particles() {
 }
 
 export default function Login() {
-    const { login } = useAuth();
+    const { login, signup } = useAuth();
+    const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [displayName, setDisplayName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -46,9 +48,13 @@ export default function Login() {
         setLoading(true);
 
         try {
-            await login(username, password);
+            if (isLogin) {
+                await login(username, password);
+            } else {
+                await signup(username, displayName, password);
+            }
         } catch (err) {
-            setError(err.message || 'Erro ao fazer login');
+            setError(err.message || (isLogin ? 'Erro ao fazer login' : 'Erro ao criar conta'));
         } finally {
             setLoading(false);
         }
@@ -68,7 +74,7 @@ export default function Login() {
                 </div>
 
                 <p className="login-subtitle">
-                    Bem-vindo de volta! Entre para continuar.
+                    {isLogin ? 'Bem-vindo de volta! Entre para continuar.' : 'Crie sua conta e conecte-se com seus amigos.'}
                 </p>
 
                 {error && (
@@ -78,7 +84,42 @@ export default function Login() {
                     </div>
                 )}
 
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <button 
+                        onClick={() => setIsLogin(true)}
+                        style={{ flex: 1, padding: '8px', background: isLogin ? 'var(--bg-modifier-selected)' : 'transparent', color: isLogin ? 'var(--text-normal)' : 'var(--text-muted)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        Entrar
+                    </button>
+                    <button 
+                        onClick={() => setIsLogin(false)}
+                        style={{ flex: 1, padding: '8px', background: !isLogin ? 'var(--bg-modifier-selected)' : 'transparent', color: !isLogin ? 'var(--text-normal)' : 'var(--text-muted)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        Criar Conta
+                    </button>
+                </div>
+
                 <form onSubmit={handleSubmit}>
+                    {!isLogin && (
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="displayName">
+                                Nome de Exibição
+                            </label>
+                            <div className="form-input-wrapper">
+                                <UserPlus className="form-input-icon" />
+                                <input
+                                    id="displayName"
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Como quer ser chamado?"
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
+                                    disabled={loading}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="form-group">
                         <label className="form-label" htmlFor="username">
                             Usuário
@@ -120,12 +161,12 @@ export default function Login() {
                         id="login-btn"
                         type="submit"
                         className="login-btn"
-                        disabled={loading || !username || !password}
+                        disabled={loading || !username || !password || (!isLogin && !displayName)}
                     >
                         {loading ? (
                             <span className="btn-spinner" />
                         ) : (
-                            'Entrar'
+                            isLogin ? 'Entrar' : 'Registrar'
                         )}
                     </button>
                 </form>

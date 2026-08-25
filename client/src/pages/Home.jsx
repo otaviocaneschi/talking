@@ -3,6 +3,8 @@ import { useSocket } from '../contexts/SocketContext';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import ServerList from '../components/ServerList';
+import ServerModals from '../components/ServerModals';
 import Sidebar from '../components/Sidebar';
 import ChatArea from '../components/ChatArea';
 import MessageInput from '../components/MessageInput';
@@ -46,6 +48,10 @@ export default function Home() {
         audioOutputDeviceId,
     });
 
+    const [servers, setServers] = useState([]);
+    const [activeServerId, setActiveServerId] = useState(null);
+    const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+
     const [channels, setChannels] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [activeChannel, setActiveChannel] = useState(null);
@@ -55,9 +61,33 @@ export default function Home() {
     // Merge voice users from socket context and webrtc hook
     const voiceUsers = { ...socketVoiceUsers, ...webrtcVoiceUsers };
 
-    // Carrega canais e usuários na montagem
+    // Carrega servidores iniciais
+    const loadServers = useCallback(async () => {
+        try {
+            const data = await api.getServers();
+            setServers(data);
+        } catch (err) {
+            console.error('Failed to load servers', err);
+        }
+    }, []);
+
     useEffect(() => {
-        api.getChannels().then((data) => {
+        loadServers();
+        api.getUsers().then((data) => {
+            setAllUsers(Array.isArray(data) ? data : []);
+        });
+    }, [loadServers]);
+
+    // Carrega canais quando o servidor muda
+    useEffect(() => {
+        if (!activeServerId) {
+            setChannels([]);
+            setActiveChannel(null);
+            setMessages([]);
+            return;
+        }
+
+        api.getChannels(activeServerId).then((data) => {
             setChannels(data.all || []);
             // Seleciona o primeiro canal de texto por padrão
             const firstText = (data.text || [])[0];
@@ -65,11 +95,7 @@ export default function Home() {
                 handleSelectChannel(firstText);
             }
         });
-
-        api.getUsers().then((data) => {
-            setAllUsers(Array.isArray(data) ? data : []);
-        });
-    }, []);
+    }, [activeServerId]);
 
     // Escuta novas mensagens
     useEffect(() => {
@@ -122,7 +148,6 @@ export default function Home() {
         setActiveChannel(channel);
 
         if (channel.type === 'voice') {
-            // Não faz join automaticamente — o usuário decide via botão
             return;
         }
 
@@ -157,12 +182,32 @@ export default function Home() {
         changeAudioOutput(deviceId);
     }, [changeAudioOutput]);
 
-    // Encontra o nome do canal de voz conectado
+    const handleCreateServer = async (name) => {
+        const newServer = await api.createServer(name);
+        await loadServers();
+        setActiveServerId(newServer.id);
+    };
+
+    const handleJoinServer = async (code) => {
+        const joinedServer = await api.joinServer(code);
+        await loadServers();
+        setActiveServerId(joinedServer.id);
+    };
+
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
+    const activeServer = servers.find((s) => s.id === activeServerId);
 
     return (
         <div className="app-layout">
+            <ServerList 
+                servers={servers} 
+                activeServerId={activeServerId} 
+                onSelectServer={setActiveServerId} 
+                onOpenModal={() => setIsServerModalOpen(true)}
+            />
+
             <Sidebar
+                server={activeServer}
                 channels={channels}
                 activeChannel={activeChannel}
                 onSelectChannel={handleSelectChannel}
@@ -182,7 +227,7 @@ export default function Home() {
             <div className="main-content">
                 {/* Header */}
                 <div className="chat-header">
-                    {activeChannel && (
+                    {activeChannel ? (
                         <>
                             <span className="channel-hash">
                                 {activeChannel.type === 'text' ? '#' : '🔊'}
@@ -195,7 +240,19 @@ export default function Home() {
                                     : `Conversando em #${activeChannel.name}`
                                 }
                             </span>
+                            {activeServer && activeChannel.name === 'geral' && (
+                                <>
+                                    <div className="chat-header-divider" />
+                                    <span className="channel-description" style={{ color: 'var(--accent-primary)' }}>
+                                        Convite: {activeServer.invite_code}
+                                    </span>
+                                </>
+                            )}
                         </>
+                    ) : (
+                        <span className="channel-title">
+                            {activeServer ? 'Selecione um canal para conversar' : 'Selecione ou crie um servidor para começar'}
+                        </span>
                     )}
                 </div>
 
@@ -218,18 +275,26 @@ export default function Home() {
                     ) : (
                         <>
                             <div className="chat-area">
-                                <ChatArea
-                                    messages={messages}
-                                    channel={activeChannel}
-                                    typingUsers={typingUsers}
-                                />
-                                {activeChannel?.type === 'text' && (
-                                    <MessageInput
-                                        channelId={activeChannel?.id}
-                                        onSend={sendMessage}
-                                        onTyping={sendTyping}
-                                        onStopTyping={sendStopTyping}
-                                    />
+                                {activeChannel ? (
+                                    <>
+                                        <ChatArea
+                                            messages={messages}
+                                            channel={activeChannel}
+                                            typingUsers={typingUsers}
+                                        />
+                                        {activeChannel?.type === 'text' && (
+                                            <MessageInput
+                                                channelId={activeChannel?.id}
+                                                onSend={sendMessage}
+                                                onTyping={sendTyping}
+                                                onStopTyping={sendStopTyping}
+                                            />
+                                        )}
+                                    </>
+                                ) : (
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                        Nenhum canal selecionado
+                                    </div>
                                 )}
                             </div>
                             <UserList
@@ -240,6 +305,13 @@ export default function Home() {
                     )}
                 </div>
             </div>
+
+            <ServerModals 
+                isOpen={isServerModalOpen}
+                onClose={() => setIsServerModalOpen(false)}
+                onCreateServer={handleCreateServer}
+                onJoinServer={handleJoinServer}
+            />
 
             {/* Audio Settings Modal */}
             <AudioSettings
