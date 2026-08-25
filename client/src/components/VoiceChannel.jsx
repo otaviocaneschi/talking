@@ -1,4 +1,5 @@
-import { Volume2, Mic, MicOff, Headphones, HeadphoneOff, PhoneCall } from 'lucide-react';
+import { Volume2, Mic, MicOff, Headphones, HeadphoneOff, PhoneCall, Monitor } from 'lucide-react';
+import ScreenShareView from './ScreenShareView';
 
 /**
  * View principal de um canal de voz.
@@ -11,11 +12,20 @@ export default function VoiceChannel({
     voiceChannelId,
     onJoin,
     currentUser,
+    isScreenSharing,
+    screenShareStream,
+    remoteScreenShare,
+    onStopScreenShare,
 }) {
     if (!channel) return null;
 
     const channelUsers = voiceUsers[channel.id] || [];
     const isConnected = voiceChannelId === channel.id;
+
+    // Determina se há screen share ativo (local ou remoto)
+    const hasLocalScreenShare = isScreenSharing && screenShareStream && isConnected;
+    const hasRemoteScreenShare = remoteScreenShare?.stream && isConnected;
+    const hasScreenShare = hasLocalScreenShare || hasRemoteScreenShare;
 
     return (
         <div className="voice-channel-view">
@@ -34,6 +44,16 @@ export default function VoiceChannel({
                     </p>
                 </div>
             </div>
+
+            {/* Screen Share View */}
+            {hasScreenShare && (
+                <ScreenShareView
+                    stream={hasLocalScreenShare ? screenShareStream : remoteScreenShare.stream}
+                    displayName={hasLocalScreenShare ? currentUser?.display_name : remoteScreenShare.displayName}
+                    isLocal={hasLocalScreenShare}
+                    onStopSharing={onStopScreenShare}
+                />
+            )}
 
             {/* Participants Grid */}
             {channelUsers.length > 0 && (
@@ -65,6 +85,11 @@ export default function VoiceChannel({
                                 </span>
 
                                 <div className="voice-participant-indicators">
+                                    {user.screenSharing && (
+                                        <span className="voice-indicator screen-sharing" title="Compartilhando tela">
+                                            <Monitor size={14} />
+                                        </span>
+                                    )}
                                     {user.muted && (
                                         <span className="voice-indicator muted" title="Mutado">
                                             <MicOff size={14} />

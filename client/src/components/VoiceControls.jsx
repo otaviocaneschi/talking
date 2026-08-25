@@ -1,4 +1,4 @@
-import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal } from 'lucide-react';
+import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Signal, Monitor, MonitorOff, Settings } from 'lucide-react';
 
 /**
  * Barra de controles de voz.
@@ -8,9 +8,12 @@ export default function VoiceControls({
     channelName,
     isMuted,
     isDeafened,
+    isScreenSharing,
     onToggleMute,
     onToggleDeafen,
+    onToggleScreenShare,
     onDisconnect,
+    onOpenSettings,
 }) {
     return (
         <div className="voice-controls slide-in">
@@ -41,6 +44,24 @@ export default function VoiceControls({
                     id="voice-deafen-btn"
                 >
                     {isDeafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
+                </button>
+
+                <button
+                    className={`control-btn ${isScreenSharing ? 'active-screen' : ''}`}
+                    onClick={onToggleScreenShare}
+                    title={isScreenSharing ? 'Parar compartilhamento' : 'Compartilhar tela'}
+                    id="voice-screen-share-btn"
+                >
+                    {isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />}
+                </button>
+
+                <button
+                    className="control-btn"
+                    onClick={onOpenSettings}
+                    title="Configurações de áudio"
+                    id="voice-settings-btn"
+                >
+                    <Settings size={18} />
                 </button>
 
                 <button

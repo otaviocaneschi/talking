@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, desktopCapturer, session } = require('electron');
 const path = require('path');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -49,7 +49,36 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+    // ─── Permitir screen sharing no Electron ────────────
+    // Quando a página pede getDisplayMedia, o Electron intercepta
+    // e podemos fornecer as fontes de tela/janela automaticamente.
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+            // Se tiver ao menos uma fonte, permite (usa a primeira tela por padrão)
+            // O Electron exibirá o seletor nativo de tela
+            if (sources.length > 0) {
+                callback({ video: sources[0] });
+            } else {
+                callback({});
+            }
+        });
+    });
 }
+
+// ─── IPC Handlers ─────────────────────────────────────
+ipcMain.handle('get-desktop-sources', async () => {
+    const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 320, height: 180 },
+    });
+
+    return sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        thumbnail: source.thumbnail.toDataURL(),
+    }));
+});
 
 app.whenReady().then(createWindow);
 

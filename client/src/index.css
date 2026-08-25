@@ -1395,3 +1395,390 @@ a {
   flex-shrink: 0;
   opacity: 0.6;
 }
+
+.voice-user-screen-icon {
+  color: var(--accent-success);
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* ─── Screen Share Indicator (Voice Participant Card) ── */
+.voice-indicator.screen-sharing {
+  color: var(--accent-success);
+  background: rgba(52, 211, 153, 0.15);
+}
+
+/* ─── Screen Share Button (Voice Controls) ─────────── */
+.control-btn.active-screen {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--accent-success);
+}
+
+.control-btn.active-screen:hover {
+  background: rgba(52, 211, 153, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Audio Settings Modal
+   ═══════════════════════════════════════════════════════ */
+
+.audio-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.audio-settings-modal {
+  width: 480px;
+  max-width: 90vw;
+  max-height: 85vh;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(99, 102, 241, 0.1);
+  overflow: hidden;
+  animation: modalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.audio-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-primary);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), transparent);
+}
+
+.audio-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.audio-settings-title svg {
+  color: var(--accent-primary);
+}
+
+.audio-settings-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.audio-settings-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.audio-settings-content {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(85vh - 60px);
+}
+
+.audio-settings-section {
+  margin-bottom: 24px;
+}
+
+.audio-settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.audio-settings-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.audio-settings-label svg {
+  color: var(--accent-primary);
+  opacity: 0.8;
+}
+
+/* ─── Audio Select ─────────────────────────────────── */
+.audio-select-wrapper {
+  position: relative;
+}
+
+.audio-select {
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.audio-select:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.audio-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.audio-select option {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+.audio-select-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ─── Mic Test ─────────────────────────────────────── */
+.mic-test-section {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mic-test-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: fit-content;
+}
+
+.mic-test-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mic-test-btn.testing {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: var(--accent-danger);
+}
+
+.mic-test-btn.testing:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+
+.mic-level-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mic-level-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.mic-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-success), var(--accent-primary));
+  border-radius: var(--radius-full);
+  transition: width 50ms ease;
+}
+
+.mic-level-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 32px;
+  text-align: right;
+}
+
+.audio-settings-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Screen Share View
+   ═══════════════════════════════════════════════════════ */
+
+.screen-share-view {
+  width: 100%;
+  max-width: 900px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-primary);
+  margin-bottom: 24px;
+  position: relative;
+  animation: fadeIn 0.3s ease;
+  box-shadow: var(--shadow-lg);
+}
+
+.screen-share-view:fullscreen {
+  max-width: none;
+  border-radius: 0;
+  border: none;
+  margin: 0;
+}
+
+.screen-share-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 100%);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.screen-share-view:hover .screen-share-header {
+  opacity: 1;
+}
+
+.screen-share-view:fullscreen .screen-share-header {
+  opacity: 1;
+}
+
+.screen-share-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.screen-share-live-badge {
+  padding: 2px 8px;
+  background: #ef4444;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.screen-share-user {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.screen-share-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.screen-share-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.screen-share-action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.screen-share-stop-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.screen-share-stop-btn:hover {
+  background: rgba(239, 68, 68, 1);
+}
+
+.screen-share-video {
+  width: 100%;
+  display: block;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+.screen-share-view:fullscreen .screen-share-video {
+  height: 100vh;
+  aspect-ratio: auto;
+}

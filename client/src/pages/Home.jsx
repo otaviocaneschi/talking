@@ -8,21 +8,42 @@ import ChatArea from '../components/ChatArea';
 import MessageInput from '../components/MessageInput';
 import UserList from '../components/UserList';
 import VoiceChannel from '../components/VoiceChannel';
+import AudioSettings from '../components/AudioSettings';
 
 export default function Home() {
     const { socket, onlineUsers, voiceUsers: socketVoiceUsers, joinChannel, sendMessage, sendTyping, sendStopTyping } = useSocket();
     const { user } = useAuth();
+
+    // ─── Audio Device State ─────────────────────────────
+    const [audioInputDeviceId, setAudioInputDeviceId] = useState(
+        () => localStorage.getItem('audioInputDeviceId') || ''
+    );
+    const [audioOutputDeviceId, setAudioOutputDeviceId] = useState(
+        () => localStorage.getItem('audioOutputDeviceId') || ''
+    );
+    const [showAudioSettings, setShowAudioSettings] = useState(false);
+
     const {
         voiceChannelId,
         isMuted,
         isDeafened,
         voiceUsers: webrtcVoiceUsers,
         speakingUsers,
+        isScreenSharing,
+        screenShareStream,
+        remoteScreenShare,
         joinVoice,
         leaveVoice,
         toggleMute,
         toggleDeafen,
-    } = useWebRTC(socket);
+        changeAudioInput,
+        changeAudioOutput,
+        startScreenShare,
+        stopScreenShare,
+    } = useWebRTC(socket, {
+        audioInputDeviceId,
+        audioOutputDeviceId,
+    });
 
     const [channels, setChannels] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -117,6 +138,24 @@ export default function Home() {
         }
     }, [joinVoice]);
 
+    const handleToggleScreenShare = useCallback(() => {
+        if (isScreenSharing) {
+            stopScreenShare();
+        } else {
+            startScreenShare();
+        }
+    }, [isScreenSharing, startScreenShare, stopScreenShare]);
+
+    const handleChangeInput = useCallback((deviceId) => {
+        setAudioInputDeviceId(deviceId);
+        changeAudioInput(deviceId);
+    }, [changeAudioInput]);
+
+    const handleChangeOutput = useCallback((deviceId) => {
+        setAudioOutputDeviceId(deviceId);
+        changeAudioOutput(deviceId);
+    }, [changeAudioOutput]);
+
     // Encontra o nome do canal de voz conectado
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
 
@@ -130,10 +169,13 @@ export default function Home() {
                 voiceChannelId={voiceChannelId}
                 isMuted={isMuted}
                 isDeafened={isDeafened}
+                isScreenSharing={isScreenSharing}
                 connectedVoiceChannelName={connectedVoiceChannel?.name}
                 onToggleMute={toggleMute}
                 onToggleDeafen={toggleDeafen}
+                onToggleScreenShare={handleToggleScreenShare}
                 onDisconnectVoice={leaveVoice}
+                onOpenAudioSettings={() => setShowAudioSettings(true)}
             />
 
             <div className="main-content">
@@ -166,6 +208,10 @@ export default function Home() {
                             voiceChannelId={voiceChannelId}
                             onJoin={handleJoinVoice}
                             currentUser={user}
+                            isScreenSharing={isScreenSharing}
+                            screenShareStream={screenShareStream}
+                            remoteScreenShare={remoteScreenShare}
+                            onStopScreenShare={stopScreenShare}
                         />
                     ) : (
                         <>
@@ -192,6 +238,16 @@ export default function Home() {
                     )}
                 </div>
             </div>
+
+            {/* Audio Settings Modal */}
+            <AudioSettings
+                isOpen={showAudioSettings}
+                onClose={() => setShowAudioSettings(false)}
+                audioInputDeviceId={audioInputDeviceId}
+                audioOutputDeviceId={audioOutputDeviceId}
+                onChangeInput={handleChangeInput}
+                onChangeOutput={handleChangeOutput}
+            />
         </div>
     );
 }

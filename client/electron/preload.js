@@ -17,4 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sendNotification: (title, body) => {
         new Notification(title, { body });
     },
+
+    // Desktop Capturer — lista telas/janelas para screen sharing
+    getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
 });

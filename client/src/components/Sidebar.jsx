@@ -1,4 +1,4 @@
-import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import VoiceControls from './VoiceControls';
 
@@ -10,10 +10,13 @@ export default function Sidebar({
     voiceChannelId,
     isMuted,
     isDeafened,
+    isScreenSharing,
     connectedVoiceChannelName,
     onToggleMute,
     onToggleDeafen,
+    onToggleScreenShare,
     onDisconnectVoice,
+    onOpenAudioSettings,
 }) {
     const { user, logout } = useAuth();
 
@@ -82,6 +85,7 @@ export default function Sidebar({
                                                 {u.display_name?.charAt(0).toUpperCase()}
                                             </div>
                                             <span className="voice-user-name">{u.display_name}</span>
+                                            {u.screenSharing && <Monitor size={12} className="voice-user-screen-icon" />}
                                             {u.muted && <MicOff size={12} className="voice-user-muted-icon" />}
                                             {u.deafened && <HeadphoneOff size={12} className="voice-user-muted-icon" />}
                                         </div>
@@ -99,9 +103,12 @@ export default function Sidebar({
                     channelName={connectedVoiceChannelName}
                     isMuted={isMuted}
                     isDeafened={isDeafened}
+                    isScreenSharing={isScreenSharing}
                     onToggleMute={onToggleMute}
                     onToggleDeafen={onToggleDeafen}
+                    onToggleScreenShare={onToggleScreenShare}
                     onDisconnect={onDisconnectVoice}
+                    onOpenSettings={onOpenAudioSettings}
                 />
             )}
 
@@ -118,7 +125,12 @@ export default function Sidebar({
                     <div className="user-status">Online</div>
                 </div>
                 <div className="user-panel-actions">
-                    <button className="icon-btn" title="Configurações" id="settings-btn">
+                    <button
+                        className="icon-btn"
+                        title="Configurações de áudio"
+                        onClick={onOpenAudioSettings}
+                        id="settings-btn"
+                    >
                         <Settings size={18} />
                     </button>
                     <button className="icon-btn" title="Sair" onClick={logout} id="logout-btn">
