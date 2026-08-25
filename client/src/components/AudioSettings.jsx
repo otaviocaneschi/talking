@@ -29,6 +29,11 @@ export default function AudioSettings({
     // Carrega a lista de dispositivos
     const loadDevices = useCallback(async () => {
         try {
+            if (!navigator.mediaDevices) {
+                console.warn('API de áudio não suportada. É necessário HTTPS ou localhost.');
+                return;
+            }
+
             // Pede permissão primeiro (necessário para ver os labels)
             await navigator.mediaDevices.getUserMedia({ audio: true })
                 .then((stream) => stream.getTracks().forEach((t) => t.stop()));
@@ -74,6 +79,8 @@ export default function AudioSettings({
 
     // Escuta mudanças de dispositivos (plugar/desplugar headset etc)
     useEffect(() => {
+        if (!navigator.mediaDevices) return;
+
         const handleDeviceChange = () => loadDevices();
         navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
         return () => navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
