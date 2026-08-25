@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════
+# Caddyfile — HTTPS automático + Reverse Proxy
+# ═══════════════════════════════════════════════════════
+#
+# Troque SEU_DOMINIO.com pelo seu domínio real.
+# O Caddy cuida do certificado SSL automaticamente via Let's Encrypt.
+#
+# Se não tiver domínio, comente o bloco abaixo e use o bloco :80
+
+SEU_DOMINIO.com {
+    reverse_proxy app:3001
+
+    # WebSocket support (necessário para Socket.io)
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websockets app:3001
+}
+
+# ─── Sem domínio (só HTTP, para teste) ────────────────
+# Descomente o bloco abaixo se não tiver domínio:
+#
+# :80 {
+#     reverse_proxy app:3001
+# }

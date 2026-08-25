@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════
+# Discord2 — Docker Compose (Produção)
+# Deploy com HTTPS via Caddy (reverse proxy automático)
+# ═══════════════════════════════════════════════════════
+
+services:
+  app:
+    build: .
+    container_name: discord2-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      # Persiste o banco de dados SQLite fora do container
+      - db-data:/app/server/data
+    networks:
+      - discord2-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: discord2-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - discord2-net
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  discord2-net:
