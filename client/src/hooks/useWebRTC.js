@@ -159,24 +159,13 @@ export function useWebRTC(socket, options = {}) {
         }
 
         const pc = new RTCPeerConnection(ICE_SERVERS);
+        
+        setPeerConnectionStates(prev => ({
+            ...prev,
+            [targetSocketId]: 'new'
+        }));
 
-        // Adiciona tracks locais (áudio)
-        if (localStream.current) {
-            localStream.current.getTracks().forEach((track) => {
-                pc.addTrack(track, localStream.current);
-            });
-        }
-
-        // Se estiver compartilhando tela, adiciona video track também
-        if (screenStream.current) {
-            const videoTrack = screenStream.current.getVideoTracks()[0];
-            if (videoTrack) {
-                const sender = pc.addTrack(videoTrack, screenStream.current);
-                screenSenders.current.set(targetSocketId, sender);
-            }
-        }
-
-        // Recebe tracks remotos
+        // 1. Bind Listeners BEFORE adding tracks
         pc.ontrack = (event) => {
             const [remoteStream] = event.streams;
             if (!remoteStream) return;
@@ -187,20 +176,17 @@ export function useWebRTC(socket, options = {}) {
                 remoteStreams.current.set(targetSocketId, remoteStream);
                 playRemoteStream(targetSocketId, remoteStream);
             } else if (track.kind === 'video') {
-                // Recebendo screen share de outro peer
                 setRemoteScreenShare((prev) => {
-                    // Se já tem um stream desse peer, atualiza
                     if (prev?.socketId === targetSocketId) {
                         return { ...prev, stream: remoteStream };
                     }
                     return {
                         socketId: targetSocketId,
-                        displayName: '', // será preenchido pelo evento screen:started
+                        displayName: '',
                         stream: remoteStream,
                     };
                 });
 
-                // Quando o video track termina, limpa
                 track.onended = () => {
                     setRemoteScreenShare((prev) => {
                         if (prev?.socketId === targetSocketId) return null;
@@ -217,7 +203,6 @@ export function useWebRTC(socket, options = {}) {
             }
         };
 
-        // Envia ICE candidates
         pc.onicecandidate = (event) => {
             if (event.candidate && socket) {
                 socket.emit('webrtc:ice-candidate', {
@@ -237,7 +222,6 @@ export function useWebRTC(socket, options = {}) {
             }
         };
 
-        // Necessário para renegociar quando adicionamos/removemos tracks
         pc.onnegotiationneeded = async () => {
             try {
                 makingOffer.current.set(targetSocketId, true);
@@ -255,6 +239,21 @@ export function useWebRTC(socket, options = {}) {
                 makingOffer.current.set(targetSocketId, false);
             }
         };
+
+        // 2. Add Tracks (this will now reliably fire onnegotiationneeded)
+        if (localStream.current) {
+            localStream.current.getTracks().forEach((track) => {
+                pc.addTrack(track, localStream.current);
+            });
+        }
+
+        if (screenStream.current) {
+            const videoTrack = screenStream.current.getVideoTracks()[0];
+            if (videoTrack) {
+                const sender = pc.addTrack(videoTrack, screenStream.current);
+                screenSenders.current.set(targetSocketId, sender);
+            }
+        }
 
         peerConnections.current.set(targetSocketId, pc);
         return pc;
