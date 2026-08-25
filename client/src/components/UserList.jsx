@@ -41,6 +41,7 @@ export default function UserList({ onlineUsers, friends, onAddFriend }) {
                             onChange={(e) => setFriendUsername(e.target.value)}
                             style={{
                                 flex: 1,
+                                minWidth: 0,
                                 padding: '8px',
                                 borderRadius: '4px',
                                 border: 'none',
