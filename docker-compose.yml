@@ -12,6 +12,8 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
+    env_file:
+      - server/.env
     volumes:
       # Persiste o banco de dados SQLite fora do container
       - db-data:/app/server/data

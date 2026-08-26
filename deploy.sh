@@ -32,6 +32,11 @@ if [ ! -f .env ]; then
     echo ""
 fi
 
+# Cria arquivo server/.env vazio se não existir para evitar erros no docker-compose
+if [ ! -f server/.env ]; then
+    touch server/.env
+fi
+
 # Pull das últimas mudanças
 echo "📥 Puxando últimas mudanças do GitHub..."
 git pull origin main
