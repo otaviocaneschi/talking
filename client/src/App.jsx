@@ -24,7 +24,7 @@ function VersionCheck({ children }) {
     useEffect(() => {
         // Se estiver rodando no navegador normal, não trava a versão
         // A trava de versão é mais importante para o executável (Electron)
-        const isElectron = typeof window !== 'undefined' && window.location.origin.startsWith('file:');
+        const isElectron = typeof window !== 'undefined' && window.location.protocol === 'file:';
         
         api.getVersion()
             .then((data) => {
