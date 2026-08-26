@@ -67,6 +67,7 @@ export function useWebRTC(socket, options = {}) {
     const currentOutputDeviceId = useRef(audioOutputDeviceId || '');
     const makingOffer = useRef(new Map());     // Map<socketId, boolean>
     const ignoreOffer = useRef(new Map());     // Map<socketId, boolean>
+    const iceCandidateBuffers = useRef(new Map()); // Map<socketId, RTCIceCandidate[]>
 
     // ─── Cleanup de um peer ──────────────────────────────
     const cleanupPeer = useCallback((socketId) => {
@@ -88,6 +89,7 @@ export function useWebRTC(socket, options = {}) {
 
         makingOffer.current.delete(socketId);
         ignoreOffer.current.delete(socketId);
+        iceCandidateBuffers.current.delete(socketId);
     }, []);
 
     // ─── Cleanup total ───────────────────────────────────
@@ -131,6 +133,7 @@ export function useWebRTC(socket, options = {}) {
 
         makingOffer.current.clear();
         ignoreOffer.current.clear();
+        iceCandidateBuffers.current.clear();
 
         isConnected.current = false;
         setSpeakingUsers(new Set());
@@ -228,17 +231,20 @@ export function useWebRTC(socket, options = {}) {
                 ...prev,
                 [targetSocketId]: pc.connectionState
             }));
-            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-                console.warn(`⚠️ Peer ${targetSocketId}: ${pc.connectionState}`);
+            if (pc.connectionState === 'failed') {
+                console.warn(`⚠️ Peer ${targetSocketId}: failed. Tentando ICE Restart...`);
+                // Se a conexão falhar, tenta um ICE restart automático (somente quem iniciou a call / polite rule)
+                if (typeof pc.restartIce === 'function') {
+                    pc.restartIce();
+                }
             }
         };
 
         pc.onnegotiationneeded = async () => {
             try {
                 makingOffer.current.set(targetSocketId, true);
-                const offer = await pc.createOffer();
-                if (pc.signalingState !== 'stable') return;
-                await pc.setLocalDescription(offer);
+                await pc.setLocalDescription(); // Cria offer e seta local automaticamente (Perfect Negotiation)
+                if (pc.signalingState !== 'have-local-offer') return;
 
                 socket?.emit('webrtc:offer', {
                     targetSocketId,
@@ -652,9 +658,20 @@ export function useWebRTC(socket, options = {}) {
             }
 
             try {
+                if (offerCollision) {
+                    await pc.setLocalDescription({ type: 'rollback' });
+                }
+
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
+                
+                // Processa ICE candidates cacheados
+                const buffer = iceCandidateBuffers.current.get(fromSocketId) || [];
+                for (const candidate of buffer) {
+                    await pc.addIceCandidate(candidate).catch(err => console.warn('Erro ao processar candidate salvo:', err));
+                }
+                iceCandidateBuffers.current.set(fromSocketId, []);
+
+                await pc.setLocalDescription(); // Cria answer automaticamente
 
                 socket.emit('webrtc:answer', {
                     targetSocketId: fromSocketId,
@@ -671,6 +688,13 @@ export function useWebRTC(socket, options = {}) {
             if (pc) {
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                    
+                    // Processa ICE candidates cacheados
+                    const buffer = iceCandidateBuffers.current.get(fromSocketId) || [];
+                    for (const candidate of buffer) {
+                        await pc.addIceCandidate(candidate).catch(err => console.warn('Erro ao processar candidate salvo:', err));
+                    }
+                    iceCandidateBuffers.current.set(fromSocketId, []);
                 } catch (err) {
                     console.error('Erro ao processar answer:', err);
                 }
@@ -682,6 +706,13 @@ export function useWebRTC(socket, options = {}) {
             const pc = peerConnections.current.get(fromSocketId);
             if (pc) {
                 try {
+                    if (!pc.remoteDescription) {
+                        // Bufferiza se ainda não tiver remoteDescription
+                        const buffer = iceCandidateBuffers.current.get(fromSocketId) || [];
+                        buffer.push(new RTCIceCandidate(candidate));
+                        iceCandidateBuffers.current.set(fromSocketId, buffer);
+                        return;
+                    }
                     await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch (err) {
                     if (!ignoreOffer.current.get(fromSocketId)) {
