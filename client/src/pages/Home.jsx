@@ -140,18 +140,24 @@ export default function Home() {
             setTypingUsers((prev) => prev.filter((name) => name !== data.display_name));
         };
 
+        const handleFriendUpdate = () => {
+            loadFriends();
+        };
+
         socket.on('message:new', handleNewMessage);
         socket.on('channel:history', handleHistory);
         socket.on('message:typing', handleTyping);
         socket.on('message:stop-typing', handleStopTyping);
+        socket.on('friend:update', handleFriendUpdate);
 
         return () => {
             socket.off('message:new', handleNewMessage);
             socket.off('channel:history', handleHistory);
             socket.off('message:typing', handleTyping);
             socket.off('message:stop-typing', handleStopTyping);
+            socket.off('friend:update', handleFriendUpdate);
         };
-    }, [socket]);
+    }, [socket, loadFriends]);
 
     // Limpa typing indicators após 3 segundos (fallback)
     useEffect(() => {

@@ -28,6 +28,8 @@ const io = new Server(httpServer, {
     },
 });
 
+app.set('io', io); // Permite acessar o io nas rotas usando req.app.get('io')
+
 // ─── Middlewares ─────────────────────────────────────────
 app.use(cors());
 app.use(express.json());

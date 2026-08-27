@@ -1,6 +1,17 @@
 const express = require('express');
 const { getDatabase } = require('../database/init');
 const { authMiddleware } = require('../middleware/auth');
+const { onlineUsers } = require('../socket/chat');
+
+function notifyUser(req, userId) {
+    const io = req.app.get('io');
+    if (!io) return;
+    for (const [socketId, userData] of onlineUsers.entries()) {
+        if (userData.id === userId) {
+            io.to(socketId).emit('friend:update');
+        }
+    }
+}
 
 const router = express.Router();
 
@@ -78,11 +89,18 @@ router.post('/add', (req, res) => {
             }
             // Se o outro enviou um pedido que está pendente, aceitamos
             db.prepare('UPDATE friends SET status = ? WHERE user_id_1 = ? AND user_id_2 = ?').run('accepted', user1, user2);
+            
+            notifyUser(req, user1);
+            notifyUser(req, user2);
+            
             return res.json({ success: true, message: `Você agora é amigo de ${targetUser.username}.` });
         }
         
         // Insere a solicitação de amizade
         db.prepare('INSERT INTO friends (user_id_1, user_id_2, status, sender_id) VALUES (?, ?, ?, ?)').run(user1, user2, 'pending', req.user.id);
+        
+        notifyUser(req, user1);
+        notifyUser(req, user2);
         
         res.json({ success: true, message: `Pedido de amizade enviado para ${targetUser.username}.` });
     } catch (err) {
@@ -115,6 +133,10 @@ router.post('/accept', (req, res) => {
         }
 
         db.prepare('UPDATE friends SET status = ? WHERE user_id_1 = ? AND user_id_2 = ?').run('accepted', user1, user2);
+        
+        notifyUser(req, user1);
+        notifyUser(req, user2);
+        
         res.json({ success: true, message: 'Pedido de amizade aceito.' });
     } catch (err) {
         console.error('Error accepting friend:', err);
@@ -137,9 +159,12 @@ router.post('/reject', (req, res) => {
 
     try {
         const result = db.prepare('DELETE FROM friends WHERE user_id_1 = ? AND user_id_2 = ?').run(user1, user2);
-        if (result.changes === 0) {
-            return res.status(404).json({ error: 'Registro de amizade não encontrado.' });
+        
+        if (result.changes > 0) {
+            notifyUser(req, user1);
+            notifyUser(req, user2);
         }
+
         res.json({ success: true, message: 'Amizade/Pedido removido.' });
     } catch (err) {
         console.error('Error rejecting friend:', err);
