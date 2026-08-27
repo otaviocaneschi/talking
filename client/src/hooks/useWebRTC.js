@@ -373,6 +373,37 @@ export function useWebRTC(socket, options = {}) {
         }
     }, [options.noiseSuppressionEnabled]);
 
+    // ─── Efeitos Sonoros ─────────────────────────────────
+    const playTone = useCallback((type) => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            
+            if (type === 'join') {
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.3);
+            } else if (type === 'leave') {
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+                gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.3);
+            }
+            setTimeout(() => ctx.close().catch(() => {}), 1000);
+        } catch(e) {}
+    }, []);
+
     // ─── Join Voice Channel ──────────────────────────────
     const joinVoice = useCallback(async (channelId) => {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -387,10 +418,15 @@ export function useWebRTC(socket, options = {}) {
 
         try {
             // Captura áudio do microfone com o device selecionado
+            // Removemos o autoGainControl para evitar o "delay" na primeira palavra
             const audioConstraints = {
                 echoCancellation: true,
                 noiseSuppression: options.noiseSuppressionEnabled !== false,
-                autoGainControl: true,
+                autoGainControl: false,
+                googEchoCancellation: true,
+                googAutoGainControl: false,
+                googNoiseSuppression: options.noiseSuppressionEnabled !== false,
+                googHighpassFilter: true,
             };
 
             if (audioInputDeviceId) {
@@ -406,6 +442,9 @@ export function useWebRTC(socket, options = {}) {
             isConnected.current = true;
             setVoiceChannelId(channelId);
 
+            // Toca som de entrada
+            playTone('join');
+
             // Inicia detecção de voz
             startVAD();
 
@@ -416,18 +455,19 @@ export function useWebRTC(socket, options = {}) {
             isConnected.current = false;
             throw err;
         }
-    }, [socket, startVAD, audioInputDeviceId]);
+    }, [socket, startVAD, audioInputDeviceId, options.noiseSuppressionEnabled, playTone]);
 
     // ─── Leave Voice Channel ─────────────────────────────
     const leaveVoice = useCallback(() => {
         if (socket && voiceChannelId) {
             socket.emit('voice:leave');
+            playTone('leave');
         }
         cleanupAll();
         setVoiceChannelId(null);
         setIsMuted(false);
         setIsDeafened(false);
-    }, [socket, voiceChannelId, cleanupAll]);
+    }, [socket, voiceChannelId, cleanupAll, playTone]);
 
     // ─── Toggle Mute ─────────────────────────────────────
     const toggleMute = useCallback(() => {
