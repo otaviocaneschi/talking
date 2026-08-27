@@ -258,11 +258,12 @@ export function useWebRTC(socket, options = {}) {
         };
 
         // 2. Add Tracks (this will now reliably fire onnegotiationneeded)
-        if (processedStream.current) {
-            processedStream.current.getTracks().forEach((track) => {
-                pc.addTrack(track, processedStream.current);
-            });
-        } else if (localStream.current) {
+        // BUG FIX: Do NOT send the `processedStream.current` over WebRTC!
+        // Using Web Audio API graph (source -> destination) breaks the browser's hardware AEC (Acoustic Echo Cancellation).
+        // This causes the "loud noise/feedback loop" over time.
+        // We must send the raw `localStream.current` which retains hardware AEC support.
+        // The Web Audio API (AudioContext) should ONLY be used for the VAD analyser.
+        if (localStream.current) {
             localStream.current.getTracks().forEach((track) => {
                 pc.addTrack(track, localStream.current);
             });
@@ -283,6 +284,14 @@ export function useWebRTC(socket, options = {}) {
     // ─── Voice Activity Detection (VAD) ──────────────────
     const startVAD = useCallback(() => {
         if (!localStream.current) return;
+
+        // Cleanup before starting new VAD to prevent AudioContext leaks
+        if (audioContext.current) {
+            audioContext.current.close().catch(() => {});
+        }
+        if (vadInterval.current) {
+            clearInterval(vadInterval.current);
+        }
 
         try {
             audioContext.current = new AudioContext();
@@ -503,13 +512,12 @@ export function useWebRTC(socket, options = {}) {
             }
             startVAD();
 
-            // Substitui a track em todas as peer connections pelo NOVO track processado!
-            const processedTrack = processedStream.current ? processedStream.current.getAudioTracks()[0] : newTrack;
+            // Substitui a track em todas as peer connections pelo NOVO track!
             for (const [, pc] of peerConnections.current) {
                 const senders = pc.getSenders();
                 const audioSender = senders.find((s) => s.track?.kind === 'audio');
-                if (audioSender && processedTrack) {
-                    await audioSender.replaceTrack(processedTrack);
+                if (audioSender && newTrack) {
+                    await audioSender.replaceTrack(newTrack);
                 }
             }
         } catch (err) {
@@ -617,6 +625,17 @@ export function useWebRTC(socket, options = {}) {
     // ─── Socket Event Listeners ──────────────────────────
     useEffect(() => {
         if (!socket) return;
+
+        // Se o socket reconectar, precisamos voltar pro canal de voz
+        const handleConnect = () => {
+            if (isConnected.current && voiceChannelId) {
+                console.log('🔄 Socket reconectado. Limpando peers antigos e re-entrando no canal...');
+                for (const peerSocketId of peerConnections.current.keys()) {
+                    cleanupPeer(peerSocketId);
+                }
+                socket.emit('voice:join', voiceChannelId);
+            }
+        };
 
         // Lista de peers já no canal (ao entrar)
         const handlePeers = async ({ peers }) => {
@@ -753,10 +772,12 @@ export function useWebRTC(socket, options = {}) {
         socket.on('webrtc:answer', handleAnswer);
         socket.on('webrtc:ice-candidate', handleIceCandidate);
         socket.on('voice:users', handleVoiceUsers);
+        socket.on('connect', handleConnect);
         socket.on('screen:started', handleScreenStarted);
         socket.on('screen:stopped', handleScreenStopped);
 
         return () => {
+            socket.off('connect', handleConnect);
             socket.off('voice:peers', handlePeers);
             socket.off('voice:user-joined', handleUserJoined);
             socket.off('voice:user-left', handleUserLeft);
