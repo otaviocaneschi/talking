@@ -68,6 +68,10 @@ export function useWebRTC(socket, options = {}) {
     const makingOffer = useRef(new Map());     // Map<socketId, boolean>
     const ignoreOffer = useRef(new Map());     // Map<socketId, boolean>
     const iceCandidateBuffers = useRef(new Map()); // Map<socketId, RTCIceCandidate[]>
+    
+    // Áudio Web API para suportar volume 200%
+    const peerGainNodes = useRef(new Map());   // Map<socketId, GainNode>
+    const audioContexts = useRef(new Map());   // Map<socketId, AudioContext>
 
     // ─── Cleanup de um peer ──────────────────────────────
     const cleanupPeer = useCallback((socketId) => {
@@ -90,6 +94,13 @@ export function useWebRTC(socket, options = {}) {
         makingOffer.current.delete(socketId);
         ignoreOffer.current.delete(socketId);
         iceCandidateBuffers.current.delete(socketId);
+
+        const ctx = audioContexts.current.get(socketId);
+        if (ctx) {
+            ctx.close().catch(()=>{});
+            audioContexts.current.delete(socketId);
+        }
+        peerGainNodes.current.delete(socketId);
     }, []);
 
     // ─── Cleanup total ───────────────────────────────────
@@ -135,6 +146,12 @@ export function useWebRTC(socket, options = {}) {
         ignoreOffer.current.clear();
         iceCandidateBuffers.current.clear();
 
+        for (const ctx of audioContexts.current.values()) {
+            ctx.close().catch(()=>{});
+        }
+        audioContexts.current.clear();
+        peerGainNodes.current.clear();
+
         isConnected.current = false;
         setSpeakingUsers(new Set());
     }, [cleanupPeer]);
@@ -147,7 +164,32 @@ export function useWebRTC(socket, options = {}) {
             audio.autoplay = true;
             audioElements.current.set(socketId, audio);
         }
-        audio.srcObject = stream;
+
+        // ─── Web Audio API para suportar > 100% Volume ───
+        try {
+            if (audioContexts.current.has(socketId)) {
+                audioContexts.current.get(socketId).close().catch(()=>{});
+            }
+            
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = ctx.createMediaStreamSource(stream);
+            const gainNode = ctx.createGain();
+            const dest = ctx.createMediaStreamDestination();
+            
+            gainNode.gain.value = 1.0; // Padrão
+            
+            source.connect(gainNode);
+            gainNode.connect(dest);
+            
+            peerGainNodes.current.set(socketId, gainNode);
+            audioContexts.current.set(socketId, ctx);
+            
+            audio.srcObject = dest.stream;
+        } catch (e) {
+            console.error('Falha ao criar AudioContext para o peer', e);
+            audio.srcObject = stream; // fallback
+        }
+
         audio.play().catch((e) => console.warn('Autoplay blocked:', e));
 
         // Aplica o dispositivo de saída atual
@@ -159,10 +201,25 @@ export function useWebRTC(socket, options = {}) {
     }, []);
 
     // ─── Controla o volume remoto ────────────────────────
-    const setPeerVolume = useCallback((socketId, volume) => {
-        const audio = audioElements.current.get(socketId);
-        if (audio) {
-            audio.volume = volume;
+    const setPeerVolume = useCallback((socketId, volume, userId) => {
+        const gainNode = peerGainNodes.current.get(socketId);
+        if (gainNode) {
+            const ctx = audioContexts.current.get(socketId);
+            if (ctx && ctx.state === 'running') {
+                gainNode.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+            } else {
+                gainNode.gain.value = volume;
+            }
+        } else {
+            // Fallback se não foi possível usar Web Audio API
+            const audio = audioElements.current.get(socketId);
+            if (audio) {
+                audio.volume = Math.min(volume, 1.0);
+            }
+        }
+        
+        if (userId) {
+            localStorage.setItem(`volume_${userId}`, volume);
         }
     }, []);
 

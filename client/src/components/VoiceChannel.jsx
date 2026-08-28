@@ -1,5 +1,6 @@
 import { Volume2, Mic, MicOff, Headphones, HeadphoneOff, PhoneCall, Monitor } from 'lucide-react';
 import ScreenShareView from './ScreenShareView';
+import { useEffect, useRef } from 'react';
 
 /**
  * View principal de um canal de voz.
@@ -28,6 +29,26 @@ export default function VoiceChannel({
     const hasLocalScreenShare = isScreenSharing && screenShareStream && isConnected;
     const hasRemoteScreenShare = remoteScreenShare?.stream && isConnected;
     const hasScreenShare = hasLocalScreenShare || hasRemoteScreenShare;
+
+    // Aplica volumes salvos (até 200%) quando os usuários entram no canal
+    const prevUsers = useRef(new Set());
+    useEffect(() => {
+        if (!setPeerVolume || !isConnected) return;
+        
+        const currentSocketIds = new Set(channelUsers.map(u => u.socketId));
+        
+        channelUsers.forEach(user => {
+            // Só aplica se o socket acabou de aparecer
+            if (!prevUsers.current.has(user.socketId)) {
+                const saved = localStorage.getItem(`volume_${user.id}`);
+                if (saved !== null) {
+                    setPeerVolume(user.socketId, parseFloat(saved), user.id);
+                }
+            }
+        });
+        
+        prevUsers.current = currentSocketIds;
+    }, [channelUsers, setPeerVolume, isConnected]);
 
     return (
         <div className="voice-channel-view" style={{ position: 'relative', paddingBottom: !isConnected && channelUsers.length > 0 ? '80px' : '0' }}>
@@ -114,12 +135,12 @@ export default function VoiceChannel({
                                         <input
                                             type="range"
                                             min="0"
-                                            max="1"
+                                            max="2"
                                             step="0.01"
-                                            defaultValue="1"
-                                            onChange={(e) => setPeerVolume && setPeerVolume(user.socketId, parseFloat(e.target.value))}
+                                            defaultValue={localStorage.getItem(`volume_${user.id}`) || "1"}
+                                            onChange={(e) => setPeerVolume && setPeerVolume(user.socketId, parseFloat(e.target.value), user.id)}
                                             className="volume-slider"
-                                            title="Ajustar volume"
+                                            title="Ajustar volume (0% a 200%)"
                                         />
                                     </div>
                                 )}
