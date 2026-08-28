@@ -662,6 +662,15 @@ export function useWebRTC(socket, options = {}) {
         }
     }, [audioOutputDeviceId, changeAudioOutput]);
 
+    // ─── Atualiza noise suppression se mudar durante a call ───
+    useEffect(() => {
+        if (isConnected.current && localStream.current) {
+            // Se mudou a configuração enquanto estamos conectados, recarrega o microfone
+            // passando undefined faz ele re-pegar o audioInputDeviceId atual
+            changeAudioInput(audioInputDeviceId || undefined);
+        }
+    }, [options.noiseSuppressionEnabled, changeAudioInput, audioInputDeviceId]);
+
     // ─── Socket Event Listeners ──────────────────────────
     useEffect(() => {
         if (!socket) return;
@@ -688,11 +697,13 @@ export function useWebRTC(socket, options = {}) {
         const handleUserJoined = ({ socketId }) => {
             // Apenas prepara a connection, o novo peer enviará o offer
             createPeerConnection(socketId);
+            playTone('join'); // Toca som quando ALGUÉM entra
         };
 
         // Peer saiu
         const handleUserLeft = ({ socketId }) => {
             cleanupPeer(socketId);
+            playTone('leave'); // Toca som quando ALGUÉM sai
 
             // Se era quem estava compartilhando tela, limpa
             setRemoteScreenShare((prev) => {
@@ -828,7 +839,7 @@ export function useWebRTC(socket, options = {}) {
             socket.off('screen:started', handleScreenStarted);
             socket.off('screen:stopped', handleScreenStopped);
         };
-    }, [socket, createPeerConnection, cleanupPeer]);
+    }, [socket, createPeerConnection, cleanupPeer, playTone]);
 
     // Cleanup ao desmontar
     useEffect(() => {
