@@ -173,6 +173,9 @@ export function useWebRTC(socket, options = {}) {
             audioElements.current.set(socketId, audio);
         }
 
+        // Extrai apenas as tracks de áudio para evitar bugs com vídeo no Chrome
+        const audioOnlyStream = new MediaStream(stream.getAudioTracks());
+
         // Workaround para o bug do Chrome: o stream original do WebRTC 
         // TEM que estar tocando em algum elemento de áudio (mesmo mutado) 
         // senão o Chrome para de enviar dados pro AudioContext.
@@ -183,7 +186,7 @@ export function useWebRTC(socket, options = {}) {
             hiddenAudio.muted = true;
             hiddenAudioElements.current.set(socketId, hiddenAudio);
         }
-        hiddenAudio.srcObject = stream;
+        hiddenAudio.srcObject = audioOnlyStream;
         hiddenAudio.play().catch(e => console.warn('Hidden audio block:', e));
 
         // ─── Web Audio API para suportar > 100% Volume ───
@@ -195,7 +198,7 @@ export function useWebRTC(socket, options = {}) {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             ctx.resume(); // Tenta acordar o contexto se o browser pausou
             
-            const source = ctx.createMediaStreamSource(stream);
+            const source = ctx.createMediaStreamSource(audioOnlyStream);
             const gainNode = ctx.createGain();
             const dest = ctx.createMediaStreamDestination();
             
@@ -282,13 +285,6 @@ export function useWebRTC(socket, options = {}) {
                 });
 
                 track.onended = () => {
-                    setRemoteScreenShare((prev) => {
-                        if (prev?.socketId === targetSocketId) return null;
-                        return prev;
-                    });
-                };
-
-                track.onmute = () => {
                     setRemoteScreenShare((prev) => {
                         if (prev?.socketId === targetSocketId) return null;
                         return prev;
