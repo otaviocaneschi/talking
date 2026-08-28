@@ -72,6 +72,7 @@ export function useWebRTC(socket, options = {}) {
     // Áudio Web API para suportar volume 200%
     const peerGainNodes = useRef(new Map());   // Map<socketId, GainNode>
     const audioContexts = useRef(new Map());   // Map<socketId, AudioContext>
+    const hiddenAudioElements = useRef(new Map()); // Workaround para bug do Chrome
 
     // ─── Cleanup de um peer ──────────────────────────────
     const cleanupPeer = useCallback((socketId) => {
@@ -89,6 +90,13 @@ export function useWebRTC(socket, options = {}) {
             audio.srcObject = null;
             audio.remove();
             audioElements.current.delete(socketId);
+        }
+
+        const hiddenAudio = hiddenAudioElements.current.get(socketId);
+        if (hiddenAudio) {
+            hiddenAudio.srcObject = null;
+            hiddenAudio.remove();
+            hiddenAudioElements.current.delete(socketId);
         }
 
         makingOffer.current.delete(socketId);
@@ -165,6 +173,19 @@ export function useWebRTC(socket, options = {}) {
             audioElements.current.set(socketId, audio);
         }
 
+        // Workaround para o bug do Chrome: o stream original do WebRTC 
+        // TEM que estar tocando em algum elemento de áudio (mesmo mutado) 
+        // senão o Chrome para de enviar dados pro AudioContext.
+        let hiddenAudio = hiddenAudioElements.current.get(socketId);
+        if (!hiddenAudio) {
+            hiddenAudio = new Audio();
+            hiddenAudio.autoplay = true;
+            hiddenAudio.muted = true;
+            hiddenAudioElements.current.set(socketId, hiddenAudio);
+        }
+        hiddenAudio.srcObject = stream;
+        hiddenAudio.play().catch(e => console.warn('Hidden audio block:', e));
+
         // ─── Web Audio API para suportar > 100% Volume ───
         try {
             if (audioContexts.current.has(socketId)) {
@@ -172,6 +193,8 @@ export function useWebRTC(socket, options = {}) {
             }
             
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            ctx.resume(); // Tenta acordar o contexto se o browser pausou
+            
             const source = ctx.createMediaStreamSource(stream);
             const gainNode = ctx.createGain();
             const dest = ctx.createMediaStreamDestination();
