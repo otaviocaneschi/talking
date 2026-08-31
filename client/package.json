@@ -1,7 +1,7 @@
 {
   "name": "talking",
   "private": true,
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Talking — Chat privado para amigos",
   "main": "electron/main.cjs",
   "type": "module",

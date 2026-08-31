@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor, Pencil, Trash2, Check, X, Shield, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import VoiceControls from './VoiceControls';
+import '../context-menu.css';
 
 export default function Sidebar({
     server,
@@ -39,6 +40,27 @@ export default function Sidebar({
     const [editingChannelId, setEditingChannelId] = useState(null);
     const [editingName, setEditingName] = useState('');
     const [deletingChannelId, setDeletingChannelId] = useState(null);
+
+    // Estado do Context Menu
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, channel: null });
+
+    useEffect(() => {
+        const handleClick = () => setContextMenu({ ...contextMenu, visible: false });
+        document.addEventListener('click', handleClick);
+        return () => document.removeEventListener('click', handleClick);
+    }, [contextMenu]);
+
+    const handleContextMenu = (e, channel) => {
+        e.preventDefault();
+        if (isOwnerOrAdmin) {
+            setContextMenu({
+                visible: true,
+                x: e.pageX,
+                y: e.pageY,
+                channel
+            });
+        }
+    };
 
     const handleStartEdit = (e, channel) => {
         e.stopPropagation();
@@ -93,6 +115,7 @@ export default function Sidebar({
                     id={`${isVoice ? 'voice-' : ''}channel-${channel.id}`}
                     className={`channel-item ${activeChannel?.id === channel.id ? 'active' : ''}`}
                     onClick={() => !isEditing && !isDeleting && onSelectChannel(channel)}
+                    onContextMenu={(e) => handleContextMenu(e, channel)}
                 >
                     {icon}
 
@@ -178,7 +201,7 @@ export default function Sidebar({
                 </span>
                 
                 {isOwnerOrAdmin && server && (
-                    <div className="channel-actions" style={{ opacity: 1, marginLeft: '8px' }}>
+                    <div className="channel-actions" style={{ opacity: 1, marginLeft: '8px', display: 'flex' }}>
                         <button className="channel-action-btn" onClick={() => onEditServer(server)} title="Editar servidor">
                             <Pencil size={14} />
                         </button>
@@ -289,6 +312,34 @@ export default function Sidebar({
                     </button>
                 </div>
             </div>
+
+            {/* Context Menu for Channels */}
+            {contextMenu.visible && contextMenu.channel && (
+                <div 
+                    className="context-menu" 
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button 
+                        className="context-menu-item"
+                        onClick={(e) => {
+                            setContextMenu({ ...contextMenu, visible: false });
+                            handleStartEdit(e, contextMenu.channel);
+                        }}
+                    >
+                        <Pencil size={14} /> Editar Canal
+                    </button>
+                    <button 
+                        className="context-menu-item danger"
+                        onClick={(e) => {
+                            setContextMenu({ ...contextMenu, visible: false });
+                            handleStartDelete(e, contextMenu.channel.id);
+                        }}
+                    >
+                        <Trash2 size={14} /> Excluir Canal
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
