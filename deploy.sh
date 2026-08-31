@@ -51,7 +51,7 @@ echo "⏳ Aguardando o app iniciar..."
 sleep 5
 
 # Verifica se está rodando
-if docker compose ps | grep -q "running"; then
+if docker compose ps | grep -qiE "running|up"; then
     echo ""
     echo "✅ ═══════════════════════════════════════"
     echo "   Deploy concluído com sucesso!"
