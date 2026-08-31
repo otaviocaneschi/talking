@@ -12,6 +12,7 @@ import UserList from '../components/UserList';
 import VoiceChannel from '../components/VoiceChannel';
 import AudioSettings from '../components/AudioSettings';
 import AdminPanel from '../components/AdminPanel';
+import ActionModal from '../components/ActionModal';
 
 export default function Home() {
     const { socket, onlineUsers, voiceUsers: socketVoiceUsers, joinChannel, sendMessage, sendTyping, sendStopTyping } = useSocket();
@@ -72,6 +73,7 @@ export default function Home() {
     const [messages, setMessages] = useState([]);
     const [typingUsers, setTypingUsers] = useState([]);
     const [showAdminPanel, setShowAdminPanel] = useState(false);
+    const [actionModal, setActionModal] = useState({ isOpen: false, type: null, payload: null });
 
     // Merge voice users from socket context and webrtc hook
     const voiceUsers = { ...socketVoiceUsers, ...webrtcVoiceUsers };
@@ -272,57 +274,46 @@ export default function Home() {
             console.error('Erro ao excluir canal:', err);
         }
     };
-    const handleCreateChannel = async (type) => {
+    const handleCreateChannel = (type) => {
         if (!activeServerId) return;
-        const name = prompt(`Qual o nome do novo canal de ${type === 'text' ? 'texto' : 'voz'}?`);
-        if (!name || !name.trim()) return;
-
-        try {
-            await api.createChannel(activeServerId, name.trim(), type);
-            // Refresh channels
-            const data = await api.getChannels(activeServerId);
-            setChannels(data.all || []);
-        } catch (err) {
-            console.error('Erro ao criar canal:', err);
-            alert('Erro ao criar canal: ' + (err.message || 'Desconhecido'));
-        }
+        setActionModal({ isOpen: true, type: 'createChannel', payload: { type } });
     };
 
-    const handleEditServer = async (serverToEdit) => {
-        const name = prompt('Qual o novo nome do servidor?', serverToEdit.name);
-        if (!name || !name.trim() || name === serverToEdit.name) return;
-
-        try {
-            await api.updateServer(serverToEdit.id, name.trim());
-            // Refresh servers
-            const data = await api.getServers();
-            setServers(data);
-        } catch (err) {
-            console.error('Erro ao editar servidor:', err);
-            alert('Erro ao editar servidor: ' + (err.message || 'Desconhecido'));
-        }
+    const handleEditServer = (serverToEdit) => {
+        setActionModal({ isOpen: true, type: 'editServer', payload: { server: serverToEdit } });
     };
 
-    const handleDeleteServer = async (serverToDelete) => {
-        if (!window.confirm(`ATENÇÃO: Você tem certeza que deseja excluir o servidor "${serverToDelete.name}"? Todos os canais e mensagens serão perdidos.`)) {
-            return;
-        }
+    const handleDeleteServer = (serverToDelete) => {
+        setActionModal({ isOpen: true, type: 'deleteServer', payload: { server: serverToDelete } });
+    };
 
+    const handleActionModalSubmit = async (inputValue) => {
+        const { type, payload } = actionModal;
         try {
-            await api.deleteServer(serverToDelete.id);
-            // Go back to friends list
-            if (activeServerId === serverToDelete.id) {
-                setActiveServerId('friends');
-                setActiveChannel(null);
-                setMessages([]);
-                setChannels([]);
+            if (type === 'createChannel') {
+                await api.createChannel(activeServerId, inputValue.trim(), payload.type);
+                const data = await api.getChannels(activeServerId);
+                setChannels(data.all || []);
+            } else if (type === 'editServer') {
+                if (inputValue.trim() === payload.server.name) return;
+                await api.updateServer(payload.server.id, inputValue.trim());
+                const data = await api.getServers();
+                setServers(data);
+            } else if (type === 'deleteServer') {
+                await api.deleteServer(payload.server.id);
+                if (activeServerId === payload.server.id) {
+                    setActiveServerId('friends');
+                    setActiveChannel(null);
+                    setMessages([]);
+                    setChannels([]);
+                }
+                const data = await api.getServers();
+                setServers(data);
             }
-            // Refresh servers
-            const data = await api.getServers();
-            setServers(data);
+            setActionModal({ isOpen: false, type: null, payload: null });
         } catch (err) {
-            console.error('Erro ao excluir servidor:', err);
-            alert('Erro ao excluir servidor: ' + (err.message || 'Desconhecido'));
+            console.error(err);
+            alert('Erro: ' + (err.message || 'Desconhecido'));
         }
     };
 
@@ -472,6 +463,37 @@ export default function Home() {
             <AdminPanel 
                 isOpen={showAdminPanel} 
                 onClose={() => setShowAdminPanel(false)} 
+            />
+
+            {/* Action Modal (Replace Prompt/Confirm) */}
+            <ActionModal
+                isOpen={actionModal.isOpen}
+                onClose={() => setActionModal({ isOpen: false, type: null, payload: null })}
+                title={
+                    actionModal.type === 'createChannel' ? `Criar Canal de ${actionModal.payload?.type === 'text' ? 'Texto' : 'Voz'}` :
+                    actionModal.type === 'editServer' ? 'Editar Servidor' :
+                    actionModal.type === 'deleteServer' ? 'Excluir Servidor' : ''
+                }
+                description={
+                    actionModal.type === 'deleteServer' 
+                        ? `ATENÇÃO: Você tem certeza que deseja excluir o servidor "${actionModal.payload?.server?.name}"? Todos os canais e mensagens serão perdidos permanentemente.`
+                        : ''
+                }
+                inputType={
+                    actionModal.type === 'deleteServer' ? null : 'text'
+                }
+                initialValue={
+                    actionModal.type === 'editServer' ? actionModal.payload?.server?.name : ''
+                }
+                placeholder={
+                    actionModal.type === 'createChannel' ? 'nome-do-canal' : ''
+                }
+                isDanger={actionModal.type === 'deleteServer'}
+                confirmText={
+                    actionModal.type === 'deleteServer' ? 'Excluir' :
+                    actionModal.type === 'createChannel' ? 'Criar' : 'Salvar'
+                }
+                onSubmit={handleActionModalSubmit}
             />
         </div>
     );
