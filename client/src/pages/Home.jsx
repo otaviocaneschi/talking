@@ -11,6 +11,7 @@ import MessageInput from '../components/MessageInput';
 import UserList from '../components/UserList';
 import VoiceChannel from '../components/VoiceChannel';
 import AudioSettings from '../components/AudioSettings';
+import AdminPanel from '../components/AdminPanel';
 
 export default function Home() {
     const { socket, onlineUsers, voiceUsers: socketVoiceUsers, joinChannel, sendMessage, sendTyping, sendStopTyping } = useSocket();
@@ -70,6 +71,7 @@ export default function Home() {
     const [activeChannel, setActiveChannel] = useState(null);
     const [messages, setMessages] = useState([]);
     const [typingUsers, setTypingUsers] = useState([]);
+    const [showAdminPanel, setShowAdminPanel] = useState(false);
 
     // Merge voice users from socket context and webrtc hook
     const voiceUsers = { ...socketVoiceUsers, ...webrtcVoiceUsers };
@@ -303,6 +305,7 @@ export default function Home() {
                 onToggleNoiseSuppression={toggleNoiseSuppression}
                 onEditChannel={handleEditChannel}
                 onDeleteChannel={handleDeleteChannel}
+                onOpenAdminPanel={() => setShowAdminPanel(true)}
             />
             <div className="main-content">
                 {/* Header */}
@@ -406,6 +409,12 @@ export default function Home() {
                 audioOutputDeviceId={audioOutputDeviceId}
                 onChangeInput={handleChangeInput}
                 onChangeOutput={handleChangeOutput}
+            />
+
+            {/* Admin Panel Modal */}
+            <AdminPanel 
+                isOpen={showAdminPanel} 
+                onClose={() => setShowAdminPanel(false)} 
             />
         </div>
     );

@@ -57,6 +57,11 @@ export const api = {
 
     // Users
     getUsers: () => request('/users'),
+    deleteUser: (userId) => request(`/users/${userId}`, { method: 'DELETE' }),
+    updateUserAdmin: (userId, isAdmin) => request(`/users/${userId}/admin`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_admin: isAdmin })
+    }),
     getMe: () => request('/users/me'),
 
     // Friends

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor, Pencil, Trash2, Check, X, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import VoiceControls from './VoiceControls';
 
@@ -23,6 +23,7 @@ export default function Sidebar({
     onToggleNoiseSuppression,
     onEditChannel,
     onDeleteChannel,
+    onOpenAdminPanel,
 }) {
     const { user, logout } = useAuth();
 
@@ -227,6 +228,16 @@ export default function Sidebar({
                     <div className="user-status">Online</div>
                 </div>
                 <div className="user-panel-actions">
+                    {user?.is_admin === 1 && (
+                        <button
+                            className="icon-btn"
+                            title="Painel de Administração"
+                            onClick={onOpenAdminPanel}
+                            style={{ color: '#ef4444' }}
+                        >
+                            <Shield size={18} />
+                        </button>
+                    )}
                     <button
                         className="icon-btn"
                         title="Configurações de áudio"
