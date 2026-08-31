@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor, Pencil, Trash2, Check, X, Shield } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, MessageSquare, LogOut, Settings, MicOff, HeadphoneOff, Monitor, Pencil, Trash2, Check, X, Shield, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import VoiceControls from './VoiceControls';
 
@@ -23,6 +23,9 @@ export default function Sidebar({
     onToggleNoiseSuppression,
     onEditChannel,
     onDeleteChannel,
+    onCreateChannel,
+    onEditServer,
+    onDeleteServer,
     onOpenAdminPanel,
 }) {
     const { user, logout } = useAuth();
@@ -169,18 +172,41 @@ export default function Sidebar({
     return (
         <div className="sidebar">
             {/* Header */}
-            <div className="sidebar-header" style={{ justifyContent: 'space-between' }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {server ? server.name : 'Selecione um Servidor'}
                 </span>
-                <ChevronDown size={16} />
+                
+                {isOwnerOrAdmin && server && (
+                    <div className="channel-actions" style={{ opacity: 1, marginLeft: '8px' }}>
+                        <button className="channel-action-btn" onClick={() => onEditServer(server)} title="Editar servidor">
+                            <Pencil size={14} />
+                        </button>
+                        <button className="channel-action-btn danger" onClick={() => onDeleteServer(server)} title="Excluir servidor">
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                )}
+                {!isOwnerOrAdmin && <ChevronDown size={16} />}
             </div>
 
             {/* Text Channels */}
             <div className="channel-section">
-                <div className="channel-section-title">
-                    <ChevronDown size={10} />
-                    Canais de Texto
+                <div className="channel-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <ChevronDown size={10} />
+                        Canais de Texto
+                    </div>
+                    {isOwnerOrAdmin && (
+                        <button 
+                            className="icon-btn" 
+                            style={{ padding: 0 }} 
+                            onClick={() => onCreateChannel('text')}
+                            title="Criar canal de texto"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    )}
                 </div>
                 {textChannels.map((channel) =>
                     renderChannelItem(channel, <Hash className="channel-icon" size={18} />)
@@ -189,9 +215,21 @@ export default function Sidebar({
 
             {/* Voice Channels */}
             <div className="channel-section">
-                <div className="channel-section-title">
-                    <ChevronDown size={10} />
-                    Canais de Voz
+                <div className="channel-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <ChevronDown size={10} />
+                        Canais de Voz
+                    </div>
+                    {isOwnerOrAdmin && (
+                        <button 
+                            className="icon-btn" 
+                            style={{ padding: 0 }} 
+                            onClick={() => onCreateChannel('voice')}
+                            title="Criar canal de voz"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    )}
                 </div>
                 {voiceChannelsList.map((channel) =>
                     renderChannelItem(channel, <Volume2 className="channel-icon" size={18} />)

@@ -159,5 +159,59 @@ router.get('/:id/channels', (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar canais.' });
     }
 });
+/**
+ * PUT /api/servers/:id
+ * Edita o nome do servidor. Apenas dono ou admin.
+ */
+router.put('/:id', (req, res) => {
+    const serverId = req.params.id;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'O nome do servidor é obrigatório.' });
+    }
+
+    const db = getDatabase();
+
+    try {
+        const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(serverId);
+        if (!server) return res.status(404).json({ error: 'Servidor não encontrado.' });
+
+        if (server.owner_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).json({ error: 'Apenas o dono do servidor pode editá-lo.' });
+        }
+
+        db.prepare('UPDATE servers SET name = ? WHERE id = ?').run(name.trim(), serverId);
+        res.json({ id: Number(serverId), name: name.trim() });
+    } catch (err) {
+        console.error('Error updating server:', err);
+        res.status(500).json({ error: 'Erro ao atualizar servidor.' });
+    }
+});
+
+/**
+ * DELETE /api/servers/:id
+ * Exclui o servidor inteiro. Apenas dono ou admin.
+ */
+router.delete('/:id', (req, res) => {
+    const serverId = req.params.id;
+    const db = getDatabase();
+
+    try {
+        const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(serverId);
+        if (!server) return res.status(404).json({ error: 'Servidor não encontrado.' });
+
+        if (server.owner_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).json({ error: 'Apenas o dono do servidor pode excluí-lo.' });
+        }
+
+        // ON DELETE CASCADE handle members, channels, and messages
+        db.prepare('DELETE FROM servers WHERE id = ?').run(serverId);
+        res.json({ success: true, message: 'Servidor excluído com sucesso.' });
+    } catch (err) {
+        console.error('Error deleting server:', err);
+        res.status(500).json({ error: 'Erro ao excluir servidor.' });
+    }
+});
 
 module.exports = router;

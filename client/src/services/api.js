@@ -44,9 +44,18 @@ export const api = {
     getServers: () => request('/servers'),
     createServer: (name) => request('/servers', { method: 'POST', body: JSON.stringify({ name }) }),
     joinServer: (invite_code) => request('/servers/join', { method: 'POST', body: JSON.stringify({ invite_code }) }),
+    updateServer: (serverId, name) => request(`/servers/${serverId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name })
+    }),
+    deleteServer: (serverId) => request(`/servers/${serverId}`, { method: 'DELETE' }),
 
     // Channels
     getChannels: (serverId) => request(`/servers/${serverId}/channels`),
+    createChannel: (serverId, name, type) => request('/channels', {
+        method: 'POST',
+        body: JSON.stringify({ server_id: serverId, name, type })
+    }),
     updateChannel: (channelId, name) => request(`/channels/${channelId}`, {
         method: 'PUT',
         body: JSON.stringify({ name })

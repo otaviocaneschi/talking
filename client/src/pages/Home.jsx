@@ -272,6 +272,60 @@ export default function Home() {
             console.error('Erro ao excluir canal:', err);
         }
     };
+    const handleCreateChannel = async (type) => {
+        if (!activeServerId) return;
+        const name = prompt(`Qual o nome do novo canal de ${type === 'text' ? 'texto' : 'voz'}?`);
+        if (!name || !name.trim()) return;
+
+        try {
+            await api.createChannel(activeServerId, name.trim(), type);
+            // Refresh channels
+            const data = await api.getChannels(activeServerId);
+            setChannels(data.all || []);
+        } catch (err) {
+            console.error('Erro ao criar canal:', err);
+            alert('Erro ao criar canal: ' + (err.message || 'Desconhecido'));
+        }
+    };
+
+    const handleEditServer = async (serverToEdit) => {
+        const name = prompt('Qual o novo nome do servidor?', serverToEdit.name);
+        if (!name || !name.trim() || name === serverToEdit.name) return;
+
+        try {
+            await api.updateServer(serverToEdit.id, name.trim());
+            // Refresh servers
+            const data = await api.getServers();
+            setServers(data);
+        } catch (err) {
+            console.error('Erro ao editar servidor:', err);
+            alert('Erro ao editar servidor: ' + (err.message || 'Desconhecido'));
+        }
+    };
+
+    const handleDeleteServer = async (serverToDelete) => {
+        if (!window.confirm(`ATENÇÃO: Você tem certeza que deseja excluir o servidor "${serverToDelete.name}"? Todos os canais e mensagens serão perdidos.`)) {
+            return;
+        }
+
+        try {
+            await api.deleteServer(serverToDelete.id);
+            // Go back to friends list
+            if (activeServerId === serverToDelete.id) {
+                setActiveServerId('friends');
+                setActiveChannel(null);
+                setMessages([]);
+                setChannels([]);
+            }
+            // Refresh servers
+            const data = await api.getServers();
+            setServers(data);
+        } catch (err) {
+            console.error('Erro ao excluir servidor:', err);
+            alert('Erro ao excluir servidor: ' + (err.message || 'Desconhecido'));
+        }
+    };
+
 
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
     const activeServer = servers.find((s) => s.id === activeServerId);
@@ -305,6 +359,9 @@ export default function Home() {
                 onToggleNoiseSuppression={toggleNoiseSuppression}
                 onEditChannel={handleEditChannel}
                 onDeleteChannel={handleDeleteChannel}
+                onCreateChannel={handleCreateChannel}
+                onEditServer={handleEditServer}
+                onDeleteServer={handleDeleteServer}
                 onOpenAdminPanel={() => setShowAdminPanel(true)}
             />
             <div className="main-content">
