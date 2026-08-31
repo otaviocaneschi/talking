@@ -15,7 +15,7 @@ export default function VoiceChannel({
     currentUser,
     isScreenSharing,
     screenShareStream,
-    remoteScreenShare,
+    remoteScreenShares,
     onStopScreenShare,
     setPeerVolume,
     peerConnectionStates,
@@ -25,10 +25,32 @@ export default function VoiceChannel({
     const channelUsers = voiceUsers[channel.id] || [];
     const isConnected = voiceChannelId === channel.id;
 
-    // Determina se há screen share ativo (local ou remoto)
-    const hasLocalScreenShare = isScreenSharing && screenShareStream && isConnected;
-    const hasRemoteScreenShare = remoteScreenShare?.stream && isConnected;
-    const hasScreenShare = hasLocalScreenShare || hasRemoteScreenShare;
+    // Monta a lista de screen shares ativos (local + remotos)
+    const activeScreenShares = [];
+
+    if (isScreenSharing && screenShareStream && isConnected) {
+        activeScreenShares.push({
+            key: 'local',
+            stream: screenShareStream,
+            displayName: currentUser?.display_name,
+            isLocal: true,
+        });
+    }
+
+    if (isConnected && remoteScreenShares) {
+        for (const [socketId, data] of remoteScreenShares) {
+            if (data.stream) {
+                activeScreenShares.push({
+                    key: socketId,
+                    stream: data.stream,
+                    displayName: data.displayName || '',
+                    isLocal: false,
+                });
+            }
+        }
+    }
+
+    const hasScreenShare = activeScreenShares.length > 0;
 
     // Aplica volumes salvos (até 200%) quando os usuários entram no canal
     const prevUsers = useRef(new Set());
@@ -68,14 +90,19 @@ export default function VoiceChannel({
                 </div>
             </div>
 
-            {/* Screen Share View */}
+            {/* Screen Share Views — Discord-style grid */}
             {hasScreenShare && (
-                <ScreenShareView
-                    stream={hasLocalScreenShare ? screenShareStream : remoteScreenShare.stream}
-                    displayName={hasLocalScreenShare ? currentUser?.display_name : remoteScreenShare.displayName}
-                    isLocal={hasLocalScreenShare}
-                    onStopSharing={onStopScreenShare}
-                />
+                <div className={`screen-share-grid ${activeScreenShares.length > 1 ? 'multi' : ''}`}>
+                    {activeScreenShares.map((ss) => (
+                        <ScreenShareView
+                            key={ss.key}
+                            stream={ss.stream}
+                            displayName={ss.displayName}
+                            isLocal={ss.isLocal}
+                            onStopSharing={onStopScreenShare}
+                        />
+                    ))}
+                </div>
             )}
 
             {/* Participants Grid */}
@@ -206,3 +233,4 @@ export default function VoiceChannel({
         </div>
     );
 }
+

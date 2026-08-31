@@ -36,26 +36,32 @@ export default function ChatArea({ messages, channel, typingUsers }) {
     const messagesEndRef = useRef(null);
     const containerRef = useRef(null);
 
-    // Auto-scroll para o final quando novas mensagens chegam
+    // Auto-scroll para o final quando novas mensagens chegam,
+    // mas SOMENTE se o usuário já estava perto do final (150px).
+    // Isso evita pular pra baixo enquanto o user lê mensagens antigas.
     useEffect(() => {
-        if (messagesEndRef.current) {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+
+        if (isNearBottom && messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
 
     if (!channel) {
         return (
-            <div className="chat-area">
-                <div className="empty-state">
-                    <Hash size={48} />
-                    <p>Selecione um canal para começar</p>
-                </div>
+            <div className="empty-state">
+                <Hash size={48} />
+                <p>Selecione um canal para começar</p>
             </div>
         );
     }
 
     return (
-        <div className="chat-area">
+        <>
             {/* Messages */}
             <div className="messages-container" ref={containerRef}>
                 {/* Welcome message */}
@@ -131,6 +137,6 @@ export default function ChatArea({ messages, channel, typingUsers }) {
                     </>
                 )}
             </div>
-        </div>
+        </>
     );
 }

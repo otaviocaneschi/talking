@@ -5,18 +5,56 @@ const { generateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// ─── Rate Limiter (in-memory, per IP) ───────────────
+const loginAttempts = new Map(); // Map<ip, { count, resetTime }>
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
+const RATE_LIMIT_MAX = 10; // 10 tentativas por janela
+
+function rateLimiter(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    const entry = loginAttempts.get(ip);
+
+    if (!entry || now > entry.resetTime) {
+        loginAttempts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+        return next();
+    }
+
+    if (entry.count >= RATE_LIMIT_MAX) {
+        const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+        return res.status(429).json({
+            error: `Muitas tentativas. Tente novamente em ${Math.ceil(retryAfter / 60)} minuto(s).`
+        });
+    }
+
+    entry.count++;
+    return next();
+}
+
+// Limpa entradas expiradas a cada 5 minutos
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of loginAttempts) {
+        if (now > entry.resetTime) loginAttempts.delete(ip);
+    }
+}, 5 * 60 * 1000);
+
 /**
  * POST /api/auth/login
  * 
  * Body: { username, password }
  * Response: { token, user: { id, username, display_name, avatar_color, is_admin } }
  */
-router.post('/login', (req, res) => {
+router.post('/login', rateLimiter, (req, res) => {
     const { username, password } = req.body;
 
     // Validação
     if (!username || !password) {
         return res.status(400).json({ error: 'Username e senha são obrigatórios.' });
+    }
+
+    if (username.length > 32 || password.length > 128) {
+        return res.status(400).json({ error: 'Dados inválidos.' });
     }
 
     const db = getDatabase();
@@ -60,11 +98,19 @@ router.post('/login', (req, res) => {
  * Body: { username, password, display_name }
  * Response: { token, user }
  */
-router.post('/signup', (req, res) => {
+router.post('/signup', rateLimiter, (req, res) => {
     const { username, password, display_name } = req.body;
 
     if (!username || !password || !display_name) {
         return res.status(400).json({ error: 'Username, senha e nome de exibição são obrigatórios.' });
+    }
+
+    if (username.length > 32 || password.length > 128 || display_name.length > 32) {
+        return res.status(400).json({ error: 'Dados muito longos.' });
+    }
+
+    if (password.length < 4) {
+        return res.status(400).json({ error: 'A senha deve ter pelo menos 4 caracteres.' });
     }
 
     const db = getDatabase();

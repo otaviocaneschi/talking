@@ -43,7 +43,7 @@ export function useWebRTC(socket, options = {}) {
     const [speakingUsers, setSpeakingUsers] = useState(new Set());
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [screenShareStream, setScreenShareStream] = useState(null);
-    const [remoteScreenShare, setRemoteScreenShare] = useState(null);
+    const [remoteScreenShares, setRemoteScreenShares] = useState(new Map()); // Map<socketId, {socketId, displayName, stream}>
     const [peerConnectionStates, setPeerConnectionStates] = useState({}); // { socketId, displayName, stream }
 
     // ─── Refs ────────────────────────────────────────────
@@ -131,7 +131,7 @@ export function useWebRTC(socket, options = {}) {
         }
         setIsScreenSharing(false);
         setScreenShareStream(null);
-        setRemoteScreenShare(null);
+        setRemoteScreenShares(new Map());
         screenSenders.current.clear();
 
         // Para o VAD
@@ -273,21 +273,22 @@ export function useWebRTC(socket, options = {}) {
                 remoteStreams.current.set(targetSocketId, remoteStream);
                 playRemoteStream(targetSocketId, remoteStream);
             } else if (track.kind === 'video') {
-                setRemoteScreenShare((prev) => {
-                    if (prev?.socketId === targetSocketId) {
-                        return { ...prev, stream: remoteStream };
-                    }
-                    return {
+                setRemoteScreenShares((prev) => {
+                    const next = new Map(prev);
+                    const existing = next.get(targetSocketId) || {};
+                    next.set(targetSocketId, {
+                        ...existing,
                         socketId: targetSocketId,
-                        displayName: '',
                         stream: remoteStream,
-                    };
+                    });
+                    return next;
                 });
 
                 track.onended = () => {
-                    setRemoteScreenShare((prev) => {
-                        if (prev?.socketId === targetSocketId) return null;
-                        return prev;
+                    setRemoteScreenShares((prev) => {
+                        const next = new Map(prev);
+                        next.delete(targetSocketId);
+                        return next;
                     });
                 };
             }
@@ -782,8 +783,12 @@ export function useWebRTC(socket, options = {}) {
             playTone('leave'); // Toca som quando ALGUÉM sai
 
             // Se era quem estava compartilhando tela, limpa
-            setRemoteScreenShare((prev) => {
-                if (prev?.socketId === socketId) return null;
+            setRemoteScreenShares((prev) => {
+                if (prev.has(socketId)) {
+                    const next = new Map(prev);
+                    next.delete(socketId);
+                    return next;
+                }
                 return prev;
             });
         };
@@ -878,16 +883,25 @@ export function useWebRTC(socket, options = {}) {
 
         // Screen sharing de outro peer
         const handleScreenStarted = ({ socketId, display_name }) => {
-            setRemoteScreenShare((prev) => ({
-                ...prev,
-                socketId,
-                displayName: display_name,
-            }));
+            setRemoteScreenShares((prev) => {
+                const next = new Map(prev);
+                const existing = next.get(socketId) || {};
+                next.set(socketId, {
+                    ...existing,
+                    socketId,
+                    displayName: display_name,
+                });
+                return next;
+            });
         };
 
         const handleScreenStopped = ({ socketId }) => {
-            setRemoteScreenShare((prev) => {
-                if (prev?.socketId === socketId) return null;
+            setRemoteScreenShares((prev) => {
+                if (prev.has(socketId)) {
+                    const next = new Map(prev);
+                    next.delete(socketId);
+                    return next;
+                }
                 return prev;
             });
         };
@@ -957,7 +971,7 @@ export function useWebRTC(socket, options = {}) {
         speakingUsers,
         isScreenSharing,
         screenShareStream,
-        remoteScreenShare,
+        remoteScreenShares,
         joinVoice,
         leaveVoice,
         toggleMute,

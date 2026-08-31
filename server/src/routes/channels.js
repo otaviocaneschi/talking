@@ -87,4 +87,81 @@ router.post('/', (req, res) => {
     }
 });
 
+/**
+ * PUT /api/channels/:id
+ * Edita o nome de um canal. Apenas o dono do servidor ou admin global.
+ * Body: { name }
+ */
+router.put('/:id', (req, res) => {
+    const channelId = req.params.id;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Nome do canal é obrigatório.' });
+    }
+
+    const db = getDatabase();
+
+    try {
+        const channel = db.prepare('SELECT server_id FROM channels WHERE id = ?').get(channelId);
+        if (!channel) {
+            return res.status(404).json({ error: 'Canal não encontrado.' });
+        }
+
+        const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(channel.server_id);
+        if (!server) {
+            return res.status(404).json({ error: 'Servidor não encontrado.' });
+        }
+
+        if (server.owner_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).json({ error: 'Apenas o dono do servidor ou admins podem editar canais.' });
+        }
+
+        db.prepare('UPDATE channels SET name = ? WHERE id = ?').run(name.trim(), channelId);
+
+        res.json({ id: Number(channelId), name: name.trim(), server_id: channel.server_id });
+    } catch (error) {
+        console.error('Error updating channel:', error);
+        res.status(500).json({ error: 'Erro ao editar canal.' });
+    }
+});
+
+/**
+ * DELETE /api/channels/:id
+ * Exclui um canal. Apenas o dono do servidor ou admin global.
+ */
+router.delete('/:id', (req, res) => {
+    const channelId = req.params.id;
+    const db = getDatabase();
+
+    try {
+        const channel = db.prepare('SELECT server_id, type FROM channels WHERE id = ?').get(channelId);
+        if (!channel) {
+            return res.status(404).json({ error: 'Canal não encontrado.' });
+        }
+
+        const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(channel.server_id);
+        if (!server) {
+            return res.status(404).json({ error: 'Servidor não encontrado.' });
+        }
+
+        if (server.owner_id !== req.user.id && !req.user.is_admin) {
+            return res.status(403).json({ error: 'Apenas o dono do servidor ou admins podem excluir canais.' });
+        }
+
+        // Impede excluir o último canal de texto (servidor precisa de pelo menos 1)
+        const textCount = db.prepare('SELECT COUNT(*) as count FROM channels WHERE server_id = ? AND type = ?').get(channel.server_id, 'text');
+        if (channel.type === 'text' && textCount.count <= 1) {
+            return res.status(400).json({ error: 'Não é possível excluir o último canal de texto do servidor.' });
+        }
+
+        db.prepare('DELETE FROM channels WHERE id = ?').run(channelId);
+
+        res.json({ success: true, message: 'Canal excluído.' });
+    } catch (error) {
+        console.error('Error deleting channel:', error);
+        res.status(500).json({ error: 'Erro ao excluir canal.' });
+    }
+});
+
 module.exports = router;

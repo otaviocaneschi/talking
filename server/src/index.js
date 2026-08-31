@@ -16,23 +16,49 @@ const userRoutes = require('./routes/users');
 const serverRoutes = require('./routes/servers');
 const friendsRoutes = require('./routes/friends');
 
-// ─── Configuração ───────────────────────────────────────
+// ─── Configuração ───────────────────────────────────
 const PORT = process.env.PORT || 3001;
 const app = express();
 const httpServer = createServer(app);
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: '*', // Será restrito em produção
-        methods: ['GET', 'POST'],
+// ─── CORS & Security ────────────────────────────────
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:3001'];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Permite requisições sem origin (ex: Electron, mobile apps)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        callback(new Error('Bloqueado pelo CORS'));
     },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+};
+
+const io = new Server(httpServer, {
+    cors: corsOptions,
 });
 
 app.set('io', io); // Permite acessar o io nas rotas usando req.app.get('io')
 
-// ─── Middlewares ─────────────────────────────────────────
-app.use(cors());
-app.use(express.json());
+// ─── Middlewares ─────────────────────────────────────
+app.use(cors(corsOptions));
+
+// Security headers (sem dependência extra)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), geolocation=()');
+    next();
+});
+
+app.use(express.json({ limit: '1mb' }));
 
 // ─── Inicializa o banco de dados ────────────────────────
 const db = initDatabase();

@@ -47,6 +47,13 @@ export const api = {
 
     // Channels
     getChannels: (serverId) => request(`/servers/${serverId}/channels`),
+    updateChannel: (channelId, name) => request(`/channels/${channelId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name })
+    }),
+    deleteChannel: (channelId) => request(`/channels/${channelId}`, {
+        method: 'DELETE'
+    }),
 
     // Users
     getUsers: () => request('/users'),

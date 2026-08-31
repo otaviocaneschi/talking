@@ -44,7 +44,7 @@ export default function Home() {
         speakingUsers,
         isScreenSharing,
         screenShareStream,
-        remoteScreenShare,
+        remoteScreenShares,
         joinVoice,
         leaveVoice,
         toggleMute,
@@ -235,6 +235,42 @@ export default function Home() {
         await loadFriends();
     };
 
+    const handleEditChannel = async (channelId, name) => {
+        try {
+            await api.updateChannel(channelId, name);
+            // Refresh channels
+            if (activeServerId) {
+                const data = await api.getChannels(activeServerId);
+                setChannels(data.all || []);
+            }
+        } catch (err) {
+            console.error('Erro ao editar canal:', err);
+        }
+    };
+
+    const handleDeleteChannel = async (channelId) => {
+        try {
+            await api.deleteChannel(channelId);
+            // If we deleted the active channel, deselect it
+            if (activeChannel?.id === channelId) {
+                setActiveChannel(null);
+                setMessages([]);
+            }
+            // Refresh channels
+            if (activeServerId) {
+                const data = await api.getChannels(activeServerId);
+                setChannels(data.all || []);
+                // Select first text channel if we had the deleted one active
+                if (activeChannel?.id === channelId) {
+                    const firstText = (data.text || [])[0];
+                    if (firstText) handleSelectChannel(firstText);
+                }
+            }
+        } catch (err) {
+            console.error('Erro ao excluir canal:', err);
+        }
+    };
+
     const connectedVoiceChannel = channels.find((c) => c.id === voiceChannelId);
     const activeServer = servers.find((s) => s.id === activeServerId);
 
@@ -265,6 +301,8 @@ export default function Home() {
                 onOpenAudioSettings={() => setShowAudioSettings(true)}
                 noiseSuppressionEnabled={noiseSuppressionEnabled}
                 onToggleNoiseSuppression={toggleNoiseSuppression}
+                onEditChannel={handleEditChannel}
+                onDeleteChannel={handleDeleteChannel}
             />
             <div className="main-content">
                 {/* Header */}
@@ -310,7 +348,7 @@ export default function Home() {
                             currentUser={user}
                             isScreenSharing={isScreenSharing}
                             screenShareStream={screenShareStream}
-                            remoteScreenShare={remoteScreenShare}
+                            remoteScreenShares={remoteScreenShares}
                             onStopScreenShare={stopScreenShare}
                             setPeerVolume={setPeerVolume}
                             peerConnectionStates={peerConnectionStates}

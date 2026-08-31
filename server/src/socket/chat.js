@@ -131,6 +131,7 @@ function registerChatHandlers(io) {
         socket.on('message:stop-typing', (channelId) => {
             socket.to(`chat:${channelId}`).emit('message:stop-typing', {
                 user_id: user.id,
+                display_name: user.display_name,
                 channelId,
             });
         });

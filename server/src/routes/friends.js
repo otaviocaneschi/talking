@@ -6,8 +6,9 @@ const { onlineUsers } = require('../socket/chat');
 function notifyUser(req, userId) {
     const io = req.app.get('io');
     if (!io) return;
+    const targetId = Number(userId);
     for (const [socketId, userData] of onlineUsers.entries()) {
-        if (userData.id === userId) {
+        if (Number(userData.id) === targetId) {
             io.to(socketId).emit('friend:update');
         }
     }
